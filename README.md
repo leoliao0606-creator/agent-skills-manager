@@ -1,167 +1,269 @@
 # Agent Skills Manager
 
-一个独立的小工具，用来把本机已经安装的 AI Agent skills 自动扫描出来，并同步到你的私人 skills Git 仓库。
+Agent Skills Manager is a cross-platform CLI and optional GUI for managing private AI agent skill libraries.
 
-它替代原先分散的 `pull-agent-skills` / `push-agent-skills` 两个脚本，提供：
+It scans locally installed skills, maps them to a Git repository, and gives users simple commands to back up, restore, and sync their skills across machines.
 
-- 自动扫描本机已安装的 skills：
-  - Claude Code: `~/.claude/skills`
-  - Hermes Agent: `~/.hermes/skills`
-- 手把手配置私人 skills 仓库：本地路径、远程 Git URL、分支、每类 skills 的映射目录
-- 简单命令随时同步：
-  - `agent-skills push`：本机 skills -> 私人仓库 -> git push
-  - `agent-skills pull`：git pull -> 私人仓库 -> 本机 skills
-- 图形化设置窗口：`agent-skills gui`
-- 无第三方 Python 依赖，只需要 Python 3.9+ 和 git
+Supported platforms:
 
-## 快速开始
+- Windows
+- macOS
+- Linux
 
-在本项目目录运行：
+Runtime requirements:
 
-```bash
-cd /home/Projects/agent-skills-manager
-python3 -m agent_skills_manager.cli scan
-python3 -m agent_skills_manager.cli setup
-```
+- Python 3.9+
+- Git
+- Tkinter only if you want to use the optional GUI
 
-如果想安装成全局命令：
+No third-party Python package is required by the application itself.
 
-```bash
-cd /home/Projects/agent-skills-manager
-python3 -m pip install -e .
-agent-skills setup
-```
+## What it does
 
-或者不使用 pip，直接生成 wrapper：
+- Scans installed AI agent skill directories.
+- Provides an interactive setup wizard for a private skills repository.
+- Supports multiple skill targets, enabled or disabled independently.
+- Syncs local skills to a Git repository with `push`.
+- Syncs repository skills back to the local machine with `pull`.
+- Supports safe additive sync by default.
+- Supports exact mirror sync with `--mirror` when users explicitly want deletion.
+- Provides a graphical settings window with `agent-skills gui`.
 
-```bash
-cd /home/Projects/agent-skills-manager
-python3 -m agent_skills_manager.cli install-shell --bindir ~/bin
-# 确保 ~/bin 在 PATH 中
-agent-skills scan
-```
-
-## 推荐工作流
-
-### 1. 第一次配置
-
-```bash
-agent-skills setup
-```
-
-向导会询问：
-
-- 私人 skills 仓库本地路径，例如 `/home/Projects/personal-agent-skills`
-- 远程 Git URL，例如 `git@github.com:你的用户名/private-agent-skills.git`
-- 默认分支，例如 `main`
-- Claude Code skills 本地目录和仓库内目录
-- Hermes skills 本地目录和仓库内目录
-
-配置会保存到：
+Default skill targets:
 
 ```text
-~/.config/agent-skills-manager/config.json
+Claude Code:  ~/.claude/skills  ->  agent-skills/
+Hermes Agent: ~/.hermes/skills   ->  hermes-skills/
 ```
 
-### 2. 查看扫描结果
+The setup wizard lets users change all paths, so the tool can work with other agents or custom skill layouts too.
+
+## Install
+
+### macOS / Linux
+
+```bash
+git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
+cd agent-skills-manager
+python3 -m pip install -e .
+agent-skills --help
+```
+
+### Windows PowerShell
+
+```powershell
+git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
+cd agent-skills-manager
+py -m pip install -e .
+agent-skills --help
+```
+
+If the `agent-skills` command is not found after installation, use the module form:
+
+```bash
+python -m agent_skills_manager.cli --help
+```
+
+On Windows:
+
+```powershell
+py -m agent_skills_manager.cli --help
+```
+
+## Quick start
+
+Run the setup wizard:
+
+```bash
+agent-skills setup
+```
+
+The wizard asks for:
+
+- Local checkout path for the private skills repository.
+- Git remote URL, such as `git@github.com:username/private-agent-skills.git` or an HTTPS URL.
+- Default branch, usually `main`.
+- Local skill directories to scan.
+- Repository subdirectories where each skill target should be stored.
+- Whether to clone, initialize, or create the local repository.
+- Whether to do the initial sync.
+
+Configuration is stored in an OS-specific per-user config file:
+
+```text
+Windows: %APPDATA%\agent-skills-manager\config.json
+macOS:   ~/Library/Application Support/agent-skills-manager/config.json
+Linux:   ~/.config/agent-skills-manager/config.json
+```
+
+You can override the config path with:
+
+```bash
+AGENT_SKILLS_CONFIG=/path/to/config.json agent-skills scan
+```
+
+PowerShell:
+
+```powershell
+$env:AGENT_SKILLS_CONFIG="C:\path\to\config.json"
+agent-skills scan
+```
+
+## Common commands
+
+Scan local and repository skills:
 
 ```bash
 agent-skills scan
+```
+
+Show Git status and skill counts:
+
+```bash
 agent-skills status
 ```
 
-### 3. 把本机 skills 备份/推送到私人仓库
+Initialize a local skills repository skeleton:
+
+```bash
+agent-skills init-repo
+```
+
+Sync local installed skills into the repository, commit, and push:
 
 ```bash
 agent-skills push
-agent-skills push -m "Add my new skills"
+agent-skills push -m "Sync my skills"
 agent-skills push --dry-run
 ```
 
-默认是安全的“增量更新”：只复制新增/修改的文件，不删除仓库里本来存在但本机没有的文件。
-
-如果你明确想完全镜像本机状态，可以用：
-
-```bash
-agent-skills push --mirror
-```
-
-### 4. 从私人仓库拉取到本机
+Sync repository skills into local installed skill directories:
 
 ```bash
 agent-skills pull
 agent-skills pull --dry-run
 ```
 
-默认也是安全的“增量更新”：不会删除本机 local-only skills。
-
-如需严格镜像仓库状态：
-
-```bash
-agent-skills pull --mirror
-```
-
-拉取后建议重启对应 Agent 会话，或在 Hermes 中运行 `/reload-skills`。
-
-### 5. 图形化配置
+Open the GUI:
 
 ```bash
 agent-skills gui
 ```
 
-图形窗口可以设置：
+## Safe sync vs mirror sync
 
-- 本地 repo 路径
-- Git remote URL
-- 分支
-- 每个 Agent 的本地 skills 目录和仓库内目录
-- 一键 Scan / Pull / Push
+By default, sync is additive and update-only:
 
-注意：GUI 依赖系统的 Tkinter。如果最小化 VPS 没装 Tkinter，可以继续使用 CLI。
+- New files are copied.
+- Changed files are updated.
+- Extra files already present in the destination are not deleted.
 
-## 仓库布局建议
+This is the safest default for users with local-only skills or multiple machines.
 
-私人 skills 仓库建议使用这个结构：
+To make the destination exactly match the source, use `--mirror`:
+
+```bash
+agent-skills push --mirror
+agent-skills pull --mirror
+```
+
+Use `--mirror` carefully because it can delete files from the destination.
+
+## Recommended repository layout
+
+A private skills repository can use this layout:
 
 ```text
 private-agent-skills/
   README.md
-  agent-skills/     # Claude Code compatible skills
-    some-skill/SKILL.md
-  hermes-skills/    # Hermes skill library, normally category/name/SKILL.md
-    software-development/some-skill/SKILL.md
+  agent-skills/
+    some-skill/
+      SKILL.md
+  hermes-skills/
+    software-development/
+      some-skill/
+        SKILL.md
 ```
 
-本工具默认使用上面的布局，但你可以在 `setup` 或 `gui` 中修改。
-
-## 命令列表
+The names are configurable. For example, a user could map a custom agent to:
 
 ```text
-agent-skills setup          交互式配置向导
-agent-skills scan           扫描本机和仓库里的 skills
-agent-skills status         显示 Git 状态和 skills 计数
-agent-skills init-repo      初始化私人 skills 仓库骨架
-agent-skills push           本机 -> 仓库，commit，push
-agent-skills pull           仓库 -> 本机
-agent-skills gui            打开图形化设置窗口
-agent-skills install-shell  安装 agent-skills / askills wrapper 到 ~/bin
+custom-agent-skills/
 ```
 
-## 和旧脚本的关系
+## GUI
 
-旧脚本：
-
-- `pull-agent-skills`
-- `push-agent-skills`
-
-可以继续保留；这个项目相当于把它们升级成可配置、可扫描、可 GUI 设置的独立工具。
-
-如果想逐步迁移，可以先只运行：
+Run:
 
 ```bash
-python3 -m agent_skills_manager.cli scan
-python3 -m agent_skills_manager.cli push --dry-run
-python3 -m agent_skills_manager.cli pull --dry-run
+agent-skills gui
 ```
 
-确认输出没问题后再正式 `push` / `pull`。
+The GUI lets users configure:
+
+- Local repository path
+- Git remote URL
+- Branch
+- Enabled skill targets
+- Local skill directories
+- Repository subdirectories
+- Scan / Pull / Push actions
+
+Tkinter is included with many Python installers, but not all minimal Linux distributions include it by default. If the GUI is unavailable, the CLI provides the same core functionality.
+
+## Cross-platform notes
+
+### Windows
+
+- Prefer PowerShell or Windows Terminal.
+- Install Git for Windows first.
+- SSH remotes work if GitHub SSH keys are configured.
+- HTTPS remotes work with Git Credential Manager.
+- Paths such as `~/.claude/skills` are expanded through Python's user home handling.
+
+### macOS
+
+- Install Git through Xcode Command Line Tools or Homebrew.
+- The default config file lives under `~/Library/Application Support`.
+- SSH and HTTPS Git remotes are both supported.
+
+### Linux
+
+- Install Git through your distribution package manager.
+- The default config file follows `XDG_CONFIG_HOME` when set, otherwise `~/.config`.
+- The optional `install-shell` command can create POSIX wrapper commands in a directory such as `~/bin`.
+
+## Publishing a new private skills repository
+
+Create an empty repository on GitHub, GitLab, Gitea, or another Git host. Do not add an initial README if you already initialized the local repository.
+
+Then run:
+
+```bash
+agent-skills setup
+agent-skills push
+```
+
+Or configure manually:
+
+```bash
+agent-skills init-repo --repo ~/agent-skills-library --remote git@github.com:username/private-agent-skills.git
+agent-skills push
+```
+
+## Development
+
+Run from source:
+
+```bash
+python -m agent_skills_manager.cli --help
+python -m agent_skills_manager.cli scan
+python -m agent_skills_manager.cli push --dry-run
+python -m agent_skills_manager.cli pull --dry-run
+```
+
+Run a syntax check:
+
+```bash
+python -m py_compile agent_skills_manager/cli.py
+```

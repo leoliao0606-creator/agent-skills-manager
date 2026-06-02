@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -18,9 +19,24 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 APP_NAME = "agent-skills-manager"
-CONFIG_PATH = Path(os.environ.get("AGENT_SKILLS_CONFIG", Path.home() / ".config" / APP_NAME / "config.json"))
-DEFAULT_REPO = Path.home() / "Projects" / "personal-agent-skills"
-LEGACY_REPO = Path("/home/Projects/personal-agent-skills")
+
+
+def default_config_path() -> Path:
+    """Return a per-user config path that works on Windows, macOS, and Linux."""
+    override = os.environ.get("AGENT_SKILLS_CONFIG")
+    if override:
+        return Path(override)
+    system = platform.system()
+    if system == "Windows":
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return base / APP_NAME / "config.json"
+    if system == "Darwin":
+        return Path.home() / "Library" / "Application Support" / APP_NAME / "config.json"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / APP_NAME / "config.json"
+
+
+CONFIG_PATH = default_config_path()
+DEFAULT_REPO = Path.home() / "agent-skills-library"
 
 
 @dataclass
@@ -55,8 +71,6 @@ def default_targets() -> List[SkillTarget]:
 
 
 def detect_default_repo() -> Path:
-    if LEGACY_REPO.exists():
-        return LEGACY_REPO
     if DEFAULT_REPO.exists():
         return DEFAULT_REPO
     return DEFAULT_REPO
@@ -424,6 +438,11 @@ def cmd_gui(args: argparse.Namespace) -> None:
 
 
 def cmd_install_shell(args: argparse.Namespace) -> None:
+    if platform.system() == "Windows":
+        raise SystemExit(
+            "install-shell creates POSIX shell wrappers and is not supported on Windows. "
+            "Use: py -m pip install -e ."
+        )
     bindir = expand(args.bindir)
     bindir.mkdir(parents=True, exist_ok=True)
     project_root = Path(__file__).resolve().parent.parent
@@ -438,7 +457,10 @@ def cmd_install_shell(args: argparse.Namespace) -> None:
     wrapper.chmod(0o755)
     alias = bindir / "askills"
     if not alias.exists():
-        alias.symlink_to(wrapper)
+        try:
+            alias.symlink_to(wrapper)
+        except OSError:
+            shutil.copy2(wrapper, alias)
     print(f"Installed wrappers:\n  {wrapper}\n  {alias}")
     print(f"Make sure {bindir} is in PATH.")
 
