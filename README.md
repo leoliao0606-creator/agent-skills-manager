@@ -30,14 +30,22 @@ No third-party Python package is required by the application itself.
 - Supports exact mirror sync with `--mirror` when users explicitly want deletion.
 - Provides a graphical settings window with `agent-skills gui`.
 
-Default skill targets:
+The setup wizard presents a terminal multi-select checklist of common agent skill locations:
 
 ```text
-Claude Code:  ~/.claude/skills  ->  claude-skills/
-Hermes Agent: ~/.hermes/skills   ->  hermes-skills/
+Claude Code:  ~/.claude/skills              ->  claude-skills/
+Codex:        ~/.codex/skills               ->  codex-skills/
+Gemini:       ~/.gemini/skills              ->  gemini-skills/
+Cursor:       ~/.cursor/skills              ->  cursor-skills/
+Windsurf:     ~/.windsurf/skills            ->  windsurf-skills/
+OpenCode:     ~/.config/opencode/skills     ->  opencode-skills/
+Goose:        ~/.config/goose/skills        ->  goose-skills/
+Aider:        ~/.aider/skills               ->  aider-skills/
+Continue:     ~/.continue/skills            ->  continue-skills/
+Hermes Agent: ~/.hermes/skills              ->  hermes-skills/
 ```
 
-The setup wizard lets users change all paths, so the tool can work with other agents or custom skill layouts too.
+Detected skill directories are pre-selected. Users can enable or disable any target and change every path during setup, so the tool can work with custom agents or custom skill layouts too.
 
 ## Install
 
@@ -114,6 +122,7 @@ The wizard asks for:
 - Local checkout path for the private skills repository.
 - Git remote URL, such as `git@github.com:username/private-agent-skills.git` or an HTTPS URL.
 - Default branch, usually `main`.
+- Terminal multi-select checklist for which agents to sync.
 - Local skill directories to scan.
 - Repository subdirectories where each skill target should be stored.
 - Whether to clone, initialize, or create the local repository.
@@ -208,6 +217,9 @@ A private skills repository can use this layout:
 private-agent-skills/
   README.md
   claude-skills/
+    some-skill/
+      SKILL.md
+  codex-skills/
     some-skill/
       SKILL.md
   hermes-skills/

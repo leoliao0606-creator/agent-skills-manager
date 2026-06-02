@@ -63,11 +63,38 @@ def expand(path: str) -> Path:
     return Path(os.path.expandvars(os.path.expanduser(path))).resolve()
 
 
-def default_targets() -> List[SkillTarget]:
-    return [
-        SkillTarget("claude", "~/.claude/skills", "claude-skills", True),
-        SkillTarget("hermes", "~/.hermes/skills", "hermes-skills", True),
+def has_skills(path: str) -> bool:
+    expanded = expand(path)
+    if not expanded.exists():
+        return False
+    return any(expanded.rglob("SKILL.md"))
+
+
+def candidate_targets() -> List[SkillTarget]:
+    """Known skill locations users can enable during setup.
+
+    All paths are configurable. The list is intentionally broad so setup works
+    as a terminal checklist for different agent ecosystems.
+    """
+    candidates = [
+        SkillTarget("claude", "~/.claude/skills", "claude-skills", False),
+        SkillTarget("codex", "~/.codex/skills", "codex-skills", False),
+        SkillTarget("gemini", "~/.gemini/skills", "gemini-skills", False),
+        SkillTarget("cursor", "~/.cursor/skills", "cursor-skills", False),
+        SkillTarget("windsurf", "~/.windsurf/skills", "windsurf-skills", False),
+        SkillTarget("opencode", "~/.config/opencode/skills", "opencode-skills", False),
+        SkillTarget("goose", "~/.config/goose/skills", "goose-skills", False),
+        SkillTarget("aider", "~/.aider/skills", "aider-skills", False),
+        SkillTarget("continue", "~/.continue/skills", "continue-skills", False),
+        SkillTarget("hermes", "~/.hermes/skills", "hermes-skills", False),
     ]
+    for target in candidates:
+        target.enabled = has_skills(target.local_dir)
+    return candidates
+
+
+def default_targets() -> List[SkillTarget]:
+    return candidate_targets()
 
 
 def detect_default_repo() -> Path:
@@ -203,6 +230,50 @@ def yes(prompt: str, default: bool = True) -> bool:
     return ans in {"y", "yes", "是", "好", "1"}
 
 
+def parse_selection(text: str, total: int) -> List[int]:
+    text = text.strip().lower()
+    if text in {"all", "a", "*"}:
+        return list(range(total))
+    if text in {"none", "n"}:
+        return []
+    selected = set()
+    for raw_part in text.replace(" ", ",").split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            start_s, end_s = part.split("-", 1)
+            start = int(start_s)
+            end = int(end_s)
+            if start > end:
+                start, end = end, start
+            selected.update(range(start - 1, end))
+        else:
+            selected.add(int(part) - 1)
+    invalid = [i + 1 for i in selected if i < 0 or i >= total]
+    if invalid:
+        raise ValueError(f"selection out of range: {invalid}")
+    return sorted(selected)
+
+
+def read_multiselect(prompt: str, options: List[SkillTarget], default_indexes: List[int]) -> List[int]:
+    print(prompt)
+    for idx, target in enumerate(options, start=1):
+        mark = "x" if idx - 1 in default_indexes else " "
+        found = count_skills(expand(target.local_dir))
+        print(f"  [{mark}] {idx:2d}. {target.name:<10} {target.local_dir:<30} -> {target.repo_dir:<18} skills={found}")
+    default_text = ",".join(str(i + 1) for i in default_indexes) or "none"
+    print("\nSelect by number, comma list, or range. Examples: 1,2,5 or 1-4. Use 'all' or 'none'.")
+    while True:
+        ans = input(f"Enabled agents [{default_text}]: ").strip()
+        if not ans:
+            return default_indexes
+        try:
+            return parse_selection(ans, len(options))
+        except ValueError as exc:
+            print(f"Invalid selection: {exc}")
+
+
 def cmd_setup(args: argparse.Namespace) -> None:
     if not git_available():
         raise SystemExit("git is required. Install git first.")
@@ -218,14 +289,26 @@ def cmd_setup(args: argparse.Namespace) -> None:
     cfg.remote_url = read_answer("Git remote URL (SSH or HTTPS; empty is OK for local-only)", cfg.remote_url or detected_remote)
     cfg.default_branch = read_answer("Default branch", cfg.default_branch or "main")
 
+    targets_by_name = {t.name: t for t in candidate_targets()}
+    for existing in cfg.targets:
+        targets_by_name[existing.name] = existing
+    available_targets = list(targets_by_name.values())
+    default_indexes = [idx for idx, target in enumerate(available_targets) if target.enabled]
+    selected_indexes = read_multiselect("\nChoose which agents to sync:", available_targets, default_indexes)
+    selected_set = set(selected_indexes)
+
     new_targets: List[SkillTarget] = []
-    for t in default_targets():
-        local = read_answer(f"{t.name} local skills directory", t.local_dir)
-        found = count_skills(expand(local))
-        print(f"  found {found} skills in {expand(local)}")
-        enable = yes(f"Enable {t.name} sync", found > 0)
-        repo_dir = read_answer(f"{t.name} directory inside repo", t.repo_dir)
-        new_targets.append(SkillTarget(t.name, local, repo_dir, enable))
+    for idx, t in enumerate(available_targets):
+        enable = idx in selected_set
+        if enable:
+            print(f"\n[{t.name}]")
+            local = read_answer(f"{t.name} local skills directory", t.local_dir)
+            found = count_skills(expand(local))
+            print(f"  found {found} skills in {expand(local)}")
+            repo_dir = read_answer(f"{t.name} directory inside repo", t.repo_dir)
+            new_targets.append(SkillTarget(t.name, local, repo_dir, True))
+        else:
+            new_targets.append(SkillTarget(t.name, t.local_dir, t.repo_dir, False))
 
     cfg.targets = new_targets
     save_config(cfg)
