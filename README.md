@@ -33,7 +33,7 @@ No third-party Python package is required by the application itself.
 Default skill targets:
 
 ```text
-Claude Code:  ~/.claude/skills  ->  agent-skills/
+Claude Code:  ~/.claude/skills  ->  claude-skills/
 Hermes Agent: ~/.hermes/skills   ->  hermes-skills/
 ```
 
@@ -207,7 +207,7 @@ A private skills repository can use this layout:
 ```text
 private-agent-skills/
   README.md
-  agent-skills/
+  claude-skills/
     some-skill/
       SKILL.md
   hermes-skills/

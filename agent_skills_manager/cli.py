@@ -65,7 +65,7 @@ def expand(path: str) -> Path:
 
 def default_targets() -> List[SkillTarget]:
     return [
-        SkillTarget("claude", "~/.claude/skills", "agent-skills", True),
+        SkillTarget("claude", "~/.claude/skills", "claude-skills", True),
         SkillTarget("hermes", "~/.hermes/skills", "hermes-skills", True),
     ]
 
