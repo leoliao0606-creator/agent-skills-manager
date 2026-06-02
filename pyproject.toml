@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-skills-manager"
+version = "0.1.0"
+description = "CLI and GUI helper for configuring, scanning, pushing, and pulling private AI agent skill repositories."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Leo"}]
+dependencies = []
+
+[project.scripts]
+agent-skills = "agent_skills_manager.cli:main"
+askills = "agent_skills_manager.cli:main"
+
+[tool.setuptools]
+packages = ["agent_skills_manager"]
