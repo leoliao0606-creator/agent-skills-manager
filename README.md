@@ -14,7 +14,6 @@ Runtime requirements:
 
 - Python 3.9+
 - Git
-- pipx is recommended for installing the command-line app on Linux/macOS
 - Tkinter only if you want to use the optional GUI
 
 No third-party Python package is required by the application itself.
@@ -51,49 +50,35 @@ Detected skill directories are pre-selected. Users can enable or disable any tar
 
 ### macOS / Linux
 
+Use a virtual environment. This works consistently across machines and avoids modifying the system Python installation.
+
 ```bash
 git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
 cd agent-skills-manager
-pipx install -e .
-agent-skills --help
-```
-
-If `agent-skills` is installed but not found, add pipx's app directory to your PATH:
-
-```bash
-pipx ensurepath
-```
-
-Then restart your shell, or run the app directly from the user bin directory:
-
-```bash
-~/.local/bin/agent-skills --help
-```
-
-On Debian/Ubuntu systems that enforce PEP 668, `python3 -m pip install -e .` may fail with `externally-managed-environment`. That is expected. Prefer `pipx install -e .` for CLI usage, or use a virtual environment for development:
-
-```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .
 agent-skills --help
 ```
 
+If the `agent-skills` command is not found after installation, use the module form:
+
+```bash
+python -m agent_skills_manager.cli --help
+```
+
+On Debian/Ubuntu systems that enforce PEP 668, avoid installing directly into the system Python. Use the virtual environment commands above.
+
 ### Windows PowerShell
+
+Use a virtual environment. This avoids modifying the system Python installation.
 
 ```powershell
 git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
 cd agent-skills-manager
-py -m pip install -e .
-agent-skills --help
-```
-
-For an isolated app-style install on Windows, pipx is also a good option:
-
-```powershell
-py -m pip install --user pipx
-py -m pipx ensurepath
-pipx install -e .
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
 agent-skills --help
 ```
 

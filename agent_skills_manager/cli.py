@@ -36,7 +36,7 @@ def default_config_path() -> Path:
 
 
 CONFIG_PATH = default_config_path()
-DEFAULT_REPO = Path.home() / "agent-skills-library"
+DEFAULT_REPO = "~/agent-skills-library"
 
 
 @dataclass
@@ -97,9 +97,7 @@ def default_targets() -> List[SkillTarget]:
     return candidate_targets()
 
 
-def detect_default_repo() -> Path:
-    if DEFAULT_REPO.exists():
-        return DEFAULT_REPO
+def detect_default_repo() -> str:
     return DEFAULT_REPO
 
 
@@ -280,13 +278,12 @@ def cmd_setup(args: argparse.Namespace) -> None:
     cfg = load_config()
     print("Agent Skills Manager setup wizard")
     print("I will scan installed skill folders and help you connect them to a private repo.\n")
+    print("Local repo checkout path = the local Git checkout directory for your skills repo.")
+    print("  Example: ~/agent-skills-library")
+    print("  This should be the repo folder containing .git, not your home directory like /home or ~.\n")
 
     cfg.repo_dir = read_answer("Local repo checkout path", cfg.repo_dir)
-    detected_remote = ""
-    repo = expand(cfg.repo_dir)
-    if (repo / ".git").exists():
-        detected_remote = git_output(["remote", "get-url", "origin"], repo)
-    cfg.remote_url = read_answer("Git remote URL (SSH or HTTPS; empty is OK for local-only)", cfg.remote_url or detected_remote)
+    cfg.remote_url = read_answer("Git remote URL (SSH or HTTPS; empty is OK for local-only)", "")
     cfg.default_branch = read_answer("Default branch", cfg.default_branch or "main")
 
     targets_by_name = {t.name: t for t in candidate_targets()}
@@ -374,11 +371,25 @@ def repo_dirty(repo: Path) -> bool:
     return bool(git_output(["status", "--porcelain"], repo))
 
 
+def local_branch_exists(repo: Path, branch: str) -> bool:
+    return bool(git_output(["rev-parse", "--verify", f"refs/heads/{branch}"], repo))
+
+
+def ensure_push_branch(repo: Path, branch: str) -> None:
+    if local_branch_exists(repo, branch):
+        run(["git", "checkout", branch], cwd=repo)
+        return
+    if not yes(f"Local branch '{branch}' does not exist. Create it from the current HEAD now", True):
+        raise SystemExit(f"Branch not found: {branch}. Create it first or choose an existing default branch.")
+    run(["git", "checkout", "-B", branch], cwd=repo)
+
+
 def cmd_push(args: argparse.Namespace) -> None:
     cfg = load_config()
     repo = ensure_repo(cfg, create=getattr(args, "create_repo", False), clone=True)
     if repo_dirty(repo) and not args.allow_dirty:
         raise SystemExit(f"Repo has uncommitted changes. Inspect first: git -C {repo} status")
+    ensure_push_branch(repo, cfg.default_branch)
     maybe_pull(repo, args.no_pull)
     total = 0
     for t in cfg.targets:
@@ -594,10 +605,18 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[List[str]] = None) -> None:
-    args = build_parser().parse_args(argv)
-    args.func(args)
+def main(argv: Optional[List[str]] = None) -> int:
+    try:
+        args = build_parser().parse_args(argv)
+        args.func(args)
+        return 0
+    except KeyboardInterrupt:
+        print("\nCancelled.", file=sys.stderr)
+        return 130
+    except EOFError:
+        print("\nNo input received; cancelled.", file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
