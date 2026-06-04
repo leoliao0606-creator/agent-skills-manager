@@ -54,8 +54,8 @@ class CtrlCHandlingTests(unittest.TestCase):
         inputs = iter(["", "", "main", "none"])
         saved = []
         cfg = cli.Config(
-            "~/Projects/personal-agent-skills",
-            remote_url="git@github.com:owner/personal-agent-skills.git",
+            "~/Projects/custom-agent-skills",
+            remote_url="git@github.com:owner/custom-agent-skills.git",
             default_branch="test",
             targets=[],
         )
@@ -84,7 +84,7 @@ class CtrlCHandlingTests(unittest.TestCase):
         self.assertIn("Git remote URL (SSH or HTTPS; empty is OK for local-only):", output)
         self.assertNotIn("Git remote URL (SSH or HTTPS; empty is OK for local-only) [", output)
         self.assertIn("Default branch [main]", output)
-        self.assertNotIn("personal-agent-skills", output)
+        self.assertNotIn("custom-agent-skills", output)
         self.assertNotIn("Default branch [test]", output)
         self.assertEqual(saved[0].repo_dir, "~/agent-skills-library")
         self.assertEqual(saved[0].remote_url, "")

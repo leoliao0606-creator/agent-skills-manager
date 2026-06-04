@@ -19,6 +19,8 @@ def status_args(**overrides):
         "limit": 5,
         "no_git": False,
         "no_scan": False,
+        "color": "auto",
+        "ascii_art": True,
     }
     values.update(overrides)
     return argparse.Namespace(**values)

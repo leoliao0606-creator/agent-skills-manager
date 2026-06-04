@@ -17,6 +17,8 @@ def scan_args(**overrides):
         "format": "text",
         "examples": True,
         "limit": 5,
+        "color": "auto",
+        "ascii_art": True,
     }
     values.update(overrides)
     return argparse.Namespace(**values)
@@ -188,6 +190,45 @@ class ScanStatusTests(unittest.TestCase):
         self.assertNotIn("    - two", limited.getvalue())
         self.assertIn("    ...", limited.getvalue())
         self.assertNotIn("    - one", no_examples.getvalue())
+    def test_scan_text_output_can_force_color_and_ascii_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            local = tmp_path / "local"
+            local.mkdir()
+            cfg = cli.Config(
+                repo_dir=str(tmp_path / "repo"),
+                targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)],
+            )
+            stdout = io.StringIO()
+
+            with patch.object(cli, "load_config", return_value=cfg):
+                with contextlib.redirect_stdout(stdout):
+                    cli.cmd_scan(scan_args(color="always"))
+
+        output = stdout.getvalue()
+        self.assertIn("+-------------------+", output)
+        self.assertIn("| Agent Skills Scan |", output)
+        self.assertIn("\x1b[", output)
+        self.assertIn("configured", output)
+
+    def test_scan_text_output_can_disable_ascii_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            local = tmp_path / "local"
+            local.mkdir()
+            cfg = cli.Config(
+                repo_dir=str(tmp_path / "repo"),
+                targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)],
+            )
+            stdout = io.StringIO()
+
+            with patch.object(cli, "load_config", return_value=cfg):
+                with contextlib.redirect_stdout(stdout):
+                    cli.cmd_scan(scan_args(ascii_art=False))
+
+        output = stdout.getvalue()
+        self.assertNotIn("Agent Skills Scan", output)
+        self.assertIn("Config:", output)
 
 
 if __name__ == "__main__":
