@@ -369,23 +369,95 @@ def cmd_setup(args: argparse.Namespace) -> None:
         print("Next: agent-skills push --dry-run")
 
 
+def scan_target_status(target: SkillTarget, local: Path) -> str:
+    if not local.exists():
+        return "not exist"
+    return "configured" if target.enabled else "not configured"
+
+
+def scan_args_limit(args: argparse.Namespace) -> int:
+    return max(0, int(getattr(args, "limit", 5)))
+
+
+def target_matches_filter(target: SkillTarget, local: Path, args: argparse.Namespace) -> bool:
+    only = getattr(args, "only", None)
+    status = scan_target_status(target, local)
+    if only == "configured":
+        return status == "configured"
+    if only == "not-configured":
+        return status == "not configured"
+    if only == "missing":
+        return status == "not exist"
+    if only == "existing":
+        return local.exists()
+    if getattr(args, "all", False):
+        return True
+    return target.enabled
+
+
+def collect_scan_targets(cfg: Config, args: argparse.Namespace) -> List[Dict[str, object]]:
+    repo_root = expand(cfg.repo_dir)
+    records: List[Dict[str, object]] = []
+    example_limit = scan_args_limit(args)
+    include_examples = bool(getattr(args, "examples", True))
+    for target in cfg.targets:
+        local = expand(target.local_dir)
+        if not target_matches_filter(target, local, args):
+            continue
+        repo = repo_root / target.repo_dir
+        skill_dirs = list(iter_skill_dirs(local))
+        examples = [str(p.relative_to(local)) for p in skill_dirs[:example_limit]] if include_examples else []
+        status = scan_target_status(target, local)
+        records.append({
+            "name": target.name,
+            "configured": target.enabled,
+            "status": status,
+            "local": str(local),
+            "repo": str(repo),
+            "local_skills": count_skills(local),
+            "repo_skills": count_skills(repo),
+            "examples": examples,
+            "has_more_examples": include_examples and len(skill_dirs) > len(examples),
+        })
+    return records
+
+
+def print_scan_records(cfg: Config, records: List[Dict[str, object]], args: argparse.Namespace, include_header: bool = True) -> None:
+    output_format = getattr(args, "format", "text")
+    if output_format == "json":
+        print(json.dumps({
+            "config": str(CONFIG_PATH) if CONFIG_PATH.exists() else None,
+            "repo": str(expand(cfg.repo_dir)),
+            "targets": records,
+        }, indent=2, ensure_ascii=False))
+        return
+    if output_format == "names":
+        for record in records:
+            print(record["name"])
+        return
+
+    if include_header:
+        print(f"Config: {CONFIG_PATH if CONFIG_PATH.exists() else '(not created yet)'}")
+        print(f"Repo:   {expand(cfg.repo_dir)}")
+        print()
+    for record in records:
+        print(f"[{record['name']}] {record['status']}")
+        if record["status"] == "not exist":
+            print()
+            continue
+        print(f"  local: {record['local']}  skills={record['local_skills']}")
+        if record["status"] == "configured":
+            print(f"  repo:  {record['repo']}  skills={record['repo_skills']}")
+            for example in record["examples"]:  # type: ignore[index]
+                print(f"    - {example}")
+            if record["has_more_examples"]:
+                print("    ...")
+        print()
+
+
 def cmd_scan(args: argparse.Namespace) -> None:
     cfg = load_config()
-    print(f"Config: {CONFIG_PATH if CONFIG_PATH.exists() else '(not created yet)'}")
-    print(f"Repo:   {expand(cfg.repo_dir)}")
-    print()
-    for t in cfg.targets:
-        local = expand(t.local_dir)
-        repo = expand(cfg.repo_dir) / t.repo_dir
-        print(f"[{t.name}] {'enabled' if t.enabled else 'disabled'}")
-        print(f"  local: {local}  skills={count_skills(local)}")
-        print(f"  repo:  {repo}  skills={count_skills(repo)}")
-        examples = list(iter_skill_dirs(local))[:5]
-        for e in examples:
-            print(f"    - {e.relative_to(local)}")
-        if count_skills(local) > len(examples):
-            print("    ...")
-        print()
+    print_scan_records(cfg, collect_scan_targets(cfg, args), args)
 
 
 def maybe_pull(repo: Path, no_pull: bool) -> None:
@@ -461,20 +533,49 @@ def cmd_push(args: argparse.Namespace) -> None:
         print("Committed locally. No origin remote configured, so nothing was pushed.")
 
 
+def collect_git_status(repo: Path) -> Dict[str, object]:
+    if (repo / ".git").exists():
+        return {
+            "initialized": True,
+            "status": git_output(["status", "--short", "--branch"], repo) or "clean",
+            "remote": git_output(["remote", "-v"], repo),
+        }
+    return {"initialized": False, "status": "Repo is not initialized yet.", "remote": ""}
+
+
 def cmd_status(args: argparse.Namespace) -> None:
     cfg = load_config()
     repo = expand(cfg.repo_dir)
-    print(f"Config: {CONFIG_PATH}")
-    print(f"Repo: {repo}")
-    if (repo / ".git").exists():
-        print(git_output(["status", "--short", "--branch"], repo) or "clean")
-        remote = git_output(["remote", "-v"], repo)
-        if remote:
-            print(remote)
-    else:
-        print("Repo is not initialized yet.")
-    print()
-    cmd_scan(args)
+    output_format = getattr(args, "format", "text")
+    include_git = not getattr(args, "no_git", False)
+    include_scan = not getattr(args, "no_scan", False)
+
+    if output_format == "json":
+        payload: Dict[str, object] = {
+            "config": str(CONFIG_PATH),
+            "repo": str(repo),
+        }
+        if include_git:
+            payload["git"] = collect_git_status(repo)
+        if include_scan:
+            payload["targets"] = collect_scan_targets(cfg, args)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+
+    if include_git:
+        print(f"Config: {CONFIG_PATH}")
+        print(f"Repo: {repo}")
+        git_status = collect_git_status(repo)
+        if git_status["initialized"]:
+            print(git_status["status"])
+            if git_status["remote"]:
+                print(git_status["remote"])
+        else:
+            print(git_status["status"])
+        if include_scan:
+            print()
+    if include_scan:
+        print_scan_records(cfg, collect_scan_targets(cfg, args), args, include_header=not include_git)
 
 
 def cmd_init_repo(args: argparse.Namespace) -> None:
@@ -505,7 +606,18 @@ def cmd_gui(args: argparse.Namespace) -> None:
         raise SystemExit(f"Tkinter GUI is not available on this system: {exc}")
 
     cfg = load_config()
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except Exception as exc:
+        raise SystemExit(
+            "GUI is not available in this environment: "
+            f"{exc}\n\n"
+            "If you are on a headless server or SSH session, use the CLI commands instead:\n"
+            "  agent-skills setup\n"
+            "  agent-skills scan\n"
+            "  agent-skills status\n"
+            "  agent-skills push --dry-run"
+        )
     root.title("Agent Skills Manager")
     root.geometry("760x520")
 
@@ -605,6 +717,27 @@ def cmd_install_shell(args: argparse.Namespace) -> None:
     print(f"Make sure {bindir} is in PATH.")
 
 
+def add_output_filter_args(parser: argparse.ArgumentParser, include_status_flags: bool = False) -> None:
+    parser.add_argument("--all", action="store_true", help="include not configured and missing targets")
+    parser.add_argument(
+        "--only",
+        choices=["configured", "not-configured", "missing", "existing"],
+        help="show only targets with this status; default shows configured targets only",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json", "names"],
+        default="text",
+        help="output format; names prints only target names for scripts",
+    )
+    parser.add_argument("--no-examples", dest="examples", action="store_false", help="hide example skill names")
+    parser.add_argument("--limit", type=int, default=5, help="maximum skill examples per target in text output")
+    parser.set_defaults(examples=True)
+    if include_status_flags:
+        parser.add_argument("--no-git", action="store_true", help="hide git status/remotes and show only skill target output")
+        parser.add_argument("--no-scan", action="store_true", help="hide skill target output and show only git status/remotes")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="agent-skills",
@@ -621,8 +754,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("setup", help="interactive setup wizard").set_defaults(func=cmd_setup)
-    sub.add_parser("scan", help="scan installed skills and repo skills").set_defaults(func=cmd_scan)
-    sub.add_parser("status", help="show git status and skill counts").set_defaults(func=cmd_status)
+    scan = sub.add_parser("scan", help="scan configured skills by default; use filters to include disabled/missing targets")
+    add_output_filter_args(scan)
+    scan.set_defaults(func=cmd_scan)
+    status = sub.add_parser("status", help="show git status and configured skill counts")
+    add_output_filter_args(status, include_status_flags=True)
+    status.set_defaults(func=cmd_status)
 
     pull = sub.add_parser("pull", help="sync repo skills into local installed skill dirs")
     pull.add_argument("--dry-run", action="store_true")

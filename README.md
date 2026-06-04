@@ -22,11 +22,12 @@ No third-party Python package is required by the application itself.
 
 - Scans installed AI agent skill directories.
 - Provides an interactive setup wizard for a private skills repository.
-- Supports multiple skill targets, enabled or disabled independently.
+- Supports multiple skill targets, configured for sync or left unconfigured independently.
 - Syncs local skills to a Git repository with `push`.
 - Syncs repository skills back to the local machine with `pull`.
 - Supports safe additive sync by default.
 - Supports exact mirror sync with `--mirror` when users explicitly want deletion.
+- Provides adjustable `scan` and `status` output for humans and scripts.
 - Provides a graphical settings window with `agent-skills gui`.
 
 The setup wizard presents a terminal multi-select checklist of common agent skill locations:
@@ -104,14 +105,23 @@ agent-skills setup
 
 The wizard asks for:
 
-- Local checkout path for the private skills repository.
-- Git remote URL, such as `git@github.com:username/private-agent-skills.git` or an HTTPS URL.
+- Local checkout path for the private skills repository. The default is the generic `~/agent-skills-library`.
+- Git remote URL, such as `git@github.com:username/private-agent-skills.git` or an HTTPS URL. This can be left empty for local-only use.
 - Default branch, usually `main`.
 - Terminal multi-select checklist for which agents to sync.
 - Local skill directories to scan.
 - Repository subdirectories where each skill target should be stored.
 - Whether to clone, initialize, or create the local repository.
 - Whether to do the initial sync.
+
+Path prompts support Tab completion on terminals where Python `readline` is available. If `readline` is unavailable, setup falls back to normal text input.
+
+The local checkout path and the Git remote URL do not need to have matching names. For example, this is valid:
+
+```text
+Local repo checkout path: ~/skills-backup
+Git remote URL: git@github.com:username/private-agent-skills.git
+```
 
 Configuration is stored in an OS-specific per-user config file:
 
@@ -142,10 +152,59 @@ Scan local and repository skills:
 agent-skills scan
 ```
 
+By default, `scan` prints only configured targets. A configured target is an agent skills directory selected for sync during setup. Use output filters when you want more or less detail:
+
+```bash
+agent-skills scan --all
+agent-skills scan --only configured
+agent-skills scan --only not-configured
+agent-skills scan --only missing
+agent-skills scan --only existing
+agent-skills scan --no-examples
+agent-skills scan --limit 1
+agent-skills scan --format names
+agent-skills scan --format json
+```
+
+Useful examples:
+
+```bash
+# Names only, convenient for shell scripts.
+agent-skills scan --format names
+
+# Show configured targets whose local skill directory does not exist.
+agent-skills scan --only missing
+
+# Machine-readable output.
+agent-skills scan --format json
+```
+
+Target status labels:
+
+```text
+configured      local skill directory exists and is selected for sync
+not configured  local skill directory exists but is not selected for sync
+not exist       local skill directory is missing
+```
+
+For `not exist`, text output prints only the status line and skips local/repo details because there is no local skill directory to inspect.
+
 Show Git status and skill counts:
 
 ```bash
 agent-skills status
+```
+
+`status` accepts the same output filters as `scan` and also supports hiding either section:
+
+```bash
+agent-skills status --all
+agent-skills status --only missing
+agent-skills status --format json
+agent-skills status --no-examples
+agent-skills status --limit 2
+agent-skills status --no-git
+agent-skills status --no-scan
 ```
 
 Initialize a local skills repository skeleton:
