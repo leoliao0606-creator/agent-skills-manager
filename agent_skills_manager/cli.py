@@ -7,6 +7,7 @@ fresh VPS or laptop without bootstrapping dependencies.
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import platform
@@ -17,6 +18,11 @@ import textwrap
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
+
+try:
+    import readline  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - readline is not available on some platforms.
+    readline = None  # type: ignore[assignment]
 
 APP_NAME = "agent-skills-manager"
 
@@ -220,6 +226,43 @@ def read_answer(prompt: str, default: str = "") -> str:
     return ans or default
 
 
+def complete_path(text: str, state: int) -> Optional[str]:
+    """readline completer for filesystem paths, preserving a leading ~/."""
+    if not text:
+        text = "~"
+    expanded = os.path.expandvars(os.path.expanduser(text))
+    matches = glob.glob(expanded + "*")
+    completions: List[str] = []
+    for match in sorted(matches):
+        completion = match
+        if text.startswith("~"):
+            home = str(Path.home())
+            if completion == home:
+                completion = "~"
+            elif completion.startswith(home + os.sep):
+                completion = "~" + completion[len(home):]
+        if os.path.isdir(os.path.expanduser(completion)):
+            completion += os.sep
+        completions.append(completion)
+    try:
+        return completions[state]
+    except IndexError:
+        return None
+
+
+def read_path_answer(prompt: str, default: str = "") -> str:
+    """Read a filesystem path prompt with Tab completion when readline exists."""
+    if readline is None:
+        return read_answer(prompt, default)
+    previous_completer = readline.get_completer()
+    readline.set_completer(complete_path)
+    readline.parse_and_bind("tab: complete")
+    try:
+        return read_answer(prompt, default)
+    finally:
+        readline.set_completer(previous_completer)
+
+
 def yes(prompt: str, default: bool = True) -> bool:
     d = "Y/n" if default else "y/N"
     ans = input(f"{prompt} [{d}]: ").strip().lower()
@@ -276,13 +319,16 @@ def cmd_setup(args: argparse.Namespace) -> None:
     if not git_available():
         raise SystemExit("git is required. Install git first.")
     cfg = load_config()
+    cfg.repo_dir = detect_default_repo()
+    cfg.remote_url = ""
+    cfg.default_branch = "main"
     print("Agent Skills Manager setup wizard")
     print("I will scan installed skill folders and help you connect them to a private repo.\n")
     print("Local repo checkout path = the local Git checkout directory for your skills repo.")
     print("  Example: ~/agent-skills-library")
     print("  This should be the repo folder containing .git, not your home directory like /home or ~.\n")
 
-    cfg.repo_dir = read_answer("Local repo checkout path", cfg.repo_dir)
+    cfg.repo_dir = read_path_answer("Local repo checkout path", cfg.repo_dir)
     cfg.remote_url = read_answer("Git remote URL (SSH or HTTPS; empty is OK for local-only)", "")
     cfg.default_branch = read_answer("Default branch", cfg.default_branch or "main")
 
@@ -299,7 +345,7 @@ def cmd_setup(args: argparse.Namespace) -> None:
         enable = idx in selected_set
         if enable:
             print(f"\n[{t.name}]")
-            local = read_answer(f"{t.name} local skills directory", t.local_dir)
+            local = read_path_answer(f"{t.name} local skills directory", t.local_dir)
             found = count_skills(expand(local))
             print(f"  found {found} skills in {expand(local)}")
             repo_dir = read_answer(f"{t.name} directory inside repo", t.repo_dir)

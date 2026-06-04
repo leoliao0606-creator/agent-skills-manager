@@ -49,6 +49,47 @@ class CtrlCHandlingTests(unittest.TestCase):
     def test_default_repo_dir_is_home_relative_not_machine_specific(self):
         self.assertEqual(cli.detect_default_repo(), "~/agent-skills-library")
 
+    def test_setup_repo_path_prompt_uses_generic_default_even_when_config_has_custom_path(self):
+        stdout = io.StringIO()
+        inputs = iter(["", "", "main", "none"])
+        saved = []
+        cfg = cli.Config(
+            "~/Projects/personal-agent-skills",
+            remote_url="git@github.com:owner/personal-agent-skills.git",
+            default_branch="test",
+            targets=[],
+        )
+
+        def answer(prompt):
+            print(prompt, end="")
+            value = next(inputs)
+            print(value)
+            return value
+
+        def save_and_stop(config):
+            saved.append(config)
+            raise KeyboardInterrupt
+
+        with patch.object(cli, "git_available", return_value=True):
+            with patch.object(cli, "load_config", return_value=cfg):
+                with patch.object(cli, "candidate_targets", return_value=[]):
+                    with patch.object(cli, "save_config", side_effect=save_and_stop):
+                        with patch("builtins.input", side_effect=answer):
+                            with contextlib.redirect_stdout(stdout):
+                                with self.assertRaises(KeyboardInterrupt):
+                                    cli.cmd_setup(argparse.Namespace())
+
+        output = stdout.getvalue()
+        self.assertIn("Local repo checkout path [~/agent-skills-library]", output)
+        self.assertIn("Git remote URL (SSH or HTTPS; empty is OK for local-only):", output)
+        self.assertNotIn("Git remote URL (SSH or HTTPS; empty is OK for local-only) [", output)
+        self.assertIn("Default branch [main]", output)
+        self.assertNotIn("personal-agent-skills", output)
+        self.assertNotIn("Default branch [test]", output)
+        self.assertEqual(saved[0].repo_dir, "~/agent-skills-library")
+        self.assertEqual(saved[0].remote_url, "")
+        self.assertEqual(saved[0].default_branch, "main")
+
     def test_setup_remote_url_prompt_has_no_default_and_enter_clears_value(self):
         stdout = io.StringIO()
         inputs = iter(["~/agent-skills-library", "", "main", "none"])
