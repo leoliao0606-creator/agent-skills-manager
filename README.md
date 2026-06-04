@@ -59,7 +59,7 @@ Detected skill directories are pre-selected. Users can enable or disable any tar
 Use a virtual environment. This works consistently across machines and avoids modifying the system Python installation.
 
 ```bash
-git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
+git clone https://github.com/leoliao0606-creator/agent-skills-manager.git
 cd agent-skills-manager
 python3 -m venv .venv
 . .venv/bin/activate
@@ -80,7 +80,7 @@ On Debian/Ubuntu systems that enforce PEP 668, avoid installing directly into th
 Use a virtual environment. This avoids modifying the system Python installation.
 
 ```powershell
-git clone https://github.com/<your-user-or-org>/agent-skills-manager.git
+git clone https://github.com/leoliao0606-creator/agent-skills-manager.git
 cd agent-skills-manager
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -101,6 +101,79 @@ Run the setup wizard:
 ```bash
 agent-skills setup
 ```
+
+If no config file exists yet, read-only commands such as `doctor`, `scan`, and `diff` can show implicit defaults so you can preview the tool. Real `push`, `pull`, and `sync` operations require a saved config; run `agent-skills setup` first.
+
+## 3-minute local-only demo
+
+This demo uses only temporary directories. It does not touch your real `~/.claude/skills`, `~/.hermes/skills`, or any remote Git repository.
+
+macOS / Linux:
+
+```bash
+DEMO_DIR="${TMPDIR:-/tmp}/agent-skills-demo"
+mkdir -p "$DEMO_DIR/local/demo-skill"
+cat > "$DEMO_DIR/local/demo-skill/SKILL.md" <<'EOF'
+---
+name: demo-skill
+description: Demo skill for Agent Skills Manager.
+---
+
+# Demo Skill
+
+A tiny skill used to test the local-only workflow.
+EOF
+
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills config set repo_dir "$DEMO_DIR/repo"
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills target disable claude
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills target disable hermes
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills target add demo --local "$DEMO_DIR/local" --repo demo-skills
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills init-repo
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills scan
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills diff --direction push
+AGENT_SKILLS_CONFIG="$DEMO_DIR/config.json" agent-skills push --dry-run
+```
+
+PowerShell:
+
+```powershell
+$demo = Join-Path $env:TEMP "agent-skills-demo"
+New-Item -ItemType Directory -Force -Path "$demo\local\demo-skill" | Out-Null
+@"
+---
+name: demo-skill
+description: Demo skill for Agent Skills Manager.
+---
+
+# Demo Skill
+
+A tiny skill used to test the local-only workflow.
+"@ | Set-Content -Encoding UTF8 "$demo\local\demo-skill\SKILL.md"
+
+$env:AGENT_SKILLS_CONFIG = "$demo\config.json"
+agent-skills config set repo_dir "$demo\repo"
+agent-skills target disable claude
+agent-skills target disable hermes
+agent-skills target add demo --local "$demo\local" --repo demo-skills
+agent-skills init-repo
+agent-skills scan
+agent-skills diff --direction push
+agent-skills push --dry-run
+```
+
+## Which command should I use?
+
+| I want to... | Run |
+|---|---|
+| First-time setup | `agent-skills setup` |
+| Check whether config and paths are safe | `agent-skills doctor` |
+| See detected configured skills | `agent-skills scan` |
+| Preview local skills -> repository | `agent-skills diff --direction push` |
+| Back up local skills to the repository | `agent-skills push --dry-run`, then `agent-skills push` |
+| Restore repository skills to this machine | `agent-skills pull --dry-run`, then `agent-skills pull` |
+| Keep both sides updated | `agent-skills sync --dry-run`, then `agent-skills sync` |
+| Create a new skill skeleton | `agent-skills new "Name" --target claude` |
+| Validate skill files | `agent-skills validate` |
 
 The wizard asks for:
 
@@ -524,7 +597,7 @@ agent-skills push
 
 ## Development
 
-Run from source:
+Run from source after activating the virtual environment from the install section:
 
 ```bash
 python -m agent_skills_manager.cli --help
@@ -535,7 +608,25 @@ python -m agent_skills_manager.cli push --dry-run
 python -m agent_skills_manager.cli pull --dry-run
 ```
 
-Run tests:
+If you have not activated a virtual environment, use the platform launcher directly:
+
+macOS / Linux:
+
+```bash
+python3 -m agent_skills_manager.cli --help
+python3 -m agent_skills_manager.cli doctor
+python3 -m unittest discover -v
+```
+
+Windows PowerShell:
+
+```powershell
+py -m agent_skills_manager.cli --help
+py -m agent_skills_manager.cli doctor
+py -m unittest discover -v
+```
+
+Run tests from an activated virtual environment:
 
 ```bash
 python -m py_compile agent_skills_manager/cli.py

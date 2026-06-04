@@ -29,20 +29,21 @@ class PushBranchTests(unittest.TestCase):
                 calls.append(cmd)
 
             with patch.object(cli, "load_config", return_value=cfg):
-                with patch.object(cli, "ensure_repo", return_value=repo):
-                    with patch.object(cli, "repo_dirty", side_effect=[False, True]):
-                        with patch.object(cli, "maybe_pull"):
-                            with patch.object(cli, "git_output", side_effect=fake_git_output):
-                                with patch.object(cli, "yes", return_value=True) as yes_mock:
-                                    with patch.object(cli, "run", side_effect=fake_run):
-                                        cli.cmd_push(argparse.Namespace(
-                                            message="Sync local agent skills",
-                                            dry_run=False,
-                                            mirror=False,
-                                            no_pull=True,
-                                            allow_dirty=False,
-                                            create_repo=True,
-                                        ))
+                with patch.object(cli, "config_file_exists", return_value=True):
+                    with patch.object(cli, "ensure_repo", return_value=repo):
+                        with patch.object(cli, "repo_dirty", side_effect=[False, True]):
+                            with patch.object(cli, "maybe_pull"):
+                                with patch.object(cli, "git_output", side_effect=fake_git_output):
+                                    with patch.object(cli, "yes", return_value=True) as yes_mock:
+                                        with patch.object(cli, "run", side_effect=fake_run):
+                                            cli.cmd_push(argparse.Namespace(
+                                                message="Sync local agent skills",
+                                                dry_run=False,
+                                                mirror=False,
+                                                no_pull=True,
+                                                allow_dirty=False,
+                                                create_repo=True,
+                                            ))
 
             yes_mock.assert_called_once()
             self.assertIn(["git", "checkout", "-B", "test"], calls)
@@ -59,20 +60,21 @@ class PushBranchTests(unittest.TestCase):
                 return ""
 
             with patch.object(cli, "load_config", return_value=cfg):
-                with patch.object(cli, "ensure_repo", return_value=repo):
-                    with patch.object(cli, "repo_dirty", return_value=False):
-                        with patch.object(cli, "maybe_pull"):
-                            with patch.object(cli, "git_output", side_effect=fake_git_output):
-                                with patch.object(cli, "yes", return_value=False):
-                                    with self.assertRaises(SystemExit) as cm:
-                                        cli.cmd_push(argparse.Namespace(
-                                            message="Sync local agent skills",
-                                            dry_run=False,
-                                            mirror=False,
-                                            no_pull=True,
-                                            allow_dirty=False,
-                                            create_repo=True,
-                                        ))
+                with patch.object(cli, "config_file_exists", return_value=True):
+                    with patch.object(cli, "ensure_repo", return_value=repo):
+                        with patch.object(cli, "repo_dirty", return_value=False):
+                            with patch.object(cli, "maybe_pull"):
+                                with patch.object(cli, "git_output", side_effect=fake_git_output):
+                                    with patch.object(cli, "yes", return_value=False):
+                                        with self.assertRaises(SystemExit) as cm:
+                                            cli.cmd_push(argparse.Namespace(
+                                                message="Sync local agent skills",
+                                                dry_run=False,
+                                                mirror=False,
+                                                no_pull=True,
+                                                allow_dirty=False,
+                                                create_repo=True,
+                                            ))
 
             self.assertIn("Branch not found", str(cm.exception))
 

@@ -16,5 +16,10 @@ dependencies = []
 agent-skills = "agent_skills_manager.cli:main"
 askills = "agent_skills_manager.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/leoliao0606-creator/agent-skills-manager"
+Repository = "https://github.com/leoliao0606-creator/agent-skills-manager.git"
+Issues = "https://github.com/leoliao0606-creator/agent-skills-manager/issues"
+
 [tool.setuptools]
 packages = ["agent_skills_manager"]

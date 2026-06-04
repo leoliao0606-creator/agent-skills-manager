@@ -172,6 +172,10 @@ def merge_candidate_targets(targets: List[SkillTarget]) -> List[SkillTarget]:
     return merged
 
 
+def config_file_exists(profile: Optional[str] = None) -> bool:
+    return config_path_for_profile(profile).exists()
+
+
 def load_config(profile: Optional[str] = None) -> Config:
     path = config_path_for_profile(profile)
     if not path.exists():
@@ -703,6 +707,29 @@ def print_ascii_header(title: str, args: argparse.Namespace) -> None:
     print(color_text(border, "cyan", args))
 
 
+def config_metadata() -> Dict[str, object]:
+    path = current_config_path()
+    exists = path.exists()
+    return {
+        "config": str(path),
+        "config_exists": exists,
+        "using_implicit_defaults": not exists,
+    }
+
+
+def require_saved_config_for_write(args: argparse.Namespace, command: str) -> None:
+    if config_file_exists():
+        return
+    if getattr(args, "dry_run", False):
+        print(f"Warning: no config file found at {current_config_path()}; using implicit defaults for this dry run only.")
+        return
+    raise SystemExit(
+        f"No config file found at {current_config_path()}. "
+        f"Run 'agent-skills setup' before 'agent-skills {command}', "
+        "or use a dry run first to preview implicit defaults."
+    )
+
+
 # ----- Scan/status -----
 
 def scan_target_status(target: SkillTarget, local: Path) -> str:
@@ -761,11 +788,12 @@ def collect_scan_targets(cfg: Config, args: argparse.Namespace) -> List[Dict[str
 def print_scan_records(cfg: Config, records: List[Dict[str, object]], args: argparse.Namespace, include_header: bool = True) -> None:
     output_format = getattr(args, "format", "text")
     if output_format == "json":
-        print(json.dumps({
-            "config": str(current_config_path()) if current_config_path().exists() else None,
+        payload = config_metadata()
+        payload.update({
             "repo": str(expand(cfg.repo_dir)),
             "targets": records,
-        }, indent=2, ensure_ascii=False))
+        })
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
     if output_format == "names":
         for record in records:
@@ -774,7 +802,11 @@ def print_scan_records(cfg: Config, records: List[Dict[str, object]], args: argp
 
     if include_header:
         print_ascii_header("Agent Skills Scan", args)
-        print(f"{color_text('Config:', 'blue', args)} {current_config_path() if current_config_path().exists() else '(not created yet)'}")
+        if current_config_path().exists():
+            print(f"{color_text('Config:', 'blue', args)} {current_config_path()}")
+        else:
+            print(f"{color_text('Config:', 'blue', args)} (not created yet; using implicit defaults)")
+            print("Run 'agent-skills setup' to save these defaults before real push/pull/sync operations.")
         print(f"{color_text('Repo:', 'blue', args)}   {expand(cfg.repo_dir)}")
         print()
     for record in records:
@@ -874,6 +906,7 @@ def mark_state_after_sync(state: Dict[str, object], repo: Path, target: SkillTar
 
 
 def cmd_push(args: argparse.Namespace) -> None:
+    require_saved_config_for_write(args, "push")
     cfg = load_config()
     repo = ensure_repo(cfg, create=getattr(args, "create_repo", False), clone=True)
     dirty_before = repo_dirty(repo)
@@ -944,6 +977,7 @@ def create_backup(cfg: Config, target: SkillTarget, local: Path) -> Path:
 
 
 def cmd_pull(args: argparse.Namespace) -> None:
+    require_saved_config_for_write(args, "pull")
     cfg = load_config()
     repo = ensure_repo(cfg, clone=True)
     maybe_pull(repo, args.no_pull)
@@ -995,10 +1029,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     include_scan = not getattr(args, "no_scan", False)
 
     if output_format == "json":
-        payload: Dict[str, object] = {
-            "config": str(current_config_path()),
-            "repo": str(repo),
-        }
+        payload: Dict[str, object] = config_metadata()
+        payload["repo"] = str(repo)
         if include_git:
             payload["git"] = collect_git_status(repo)
         if include_scan:
@@ -1011,7 +1043,11 @@ def cmd_status(args: argparse.Namespace) -> None:
 
     if include_git:
         print_ascii_header("Agent Skills Status", args)
-        print(f"{color_text('Config:', 'blue', args)} {current_config_path()}")
+        if current_config_path().exists():
+            print(f"{color_text('Config:', 'blue', args)} {current_config_path()}")
+        else:
+            print(f"{color_text('Config:', 'blue', args)} (not created yet; using implicit defaults)")
+            print("Run 'agent-skills setup' to save these defaults before real push/pull/sync operations.")
         print(f"{color_text('Repo:', 'blue', args)} {repo}")
         git_status = collect_git_status(repo)
         if git_status["initialized"]:
@@ -1075,6 +1111,7 @@ def cmd_plan(args: argparse.Namespace) -> None:
 
 def cmd_sync(args: argparse.Namespace) -> None:
     """Two-way safe sync: pull repo changes, then push local changes."""
+    require_saved_config_for_write(args, "sync")
     pull_args = argparse.Namespace(**vars(args))
     pull_args.no_pull = getattr(args, "no_pull", False)
     pull_args.backup = not getattr(args, "no_backup", False)
@@ -1105,6 +1142,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         add("ok", f"config exists: {current_config_path()}")
     else:
         add("warn", f"config has not been created yet: {current_config_path()}")
+        add("warn", "using implicit defaults; run 'agent-skills setup' before real push/pull/sync operations")
     reasons = dangerous_repo_reasons(repo, cfg)
     if reasons:
         for reason in reasons:
@@ -1128,7 +1166,9 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         elif local.exists():
             add("warn", f"target {target.name}: local exists but is not configured")
     if getattr(args, "format", "text") == "json":
-        print(json.dumps({"config": str(current_config_path()), "repo": str(repo), "checks": checks}, indent=2, ensure_ascii=False))
+        payload = config_metadata()
+        payload.update({"repo": str(repo), "checks": checks})
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         print_ascii_header("Agent Skills Doctor", args)
         for check in checks:
@@ -1226,10 +1266,15 @@ def cmd_validate(args: argparse.Namespace) -> None:
 
 def cmd_config_show(args: argparse.Namespace) -> None:
     cfg = load_config()
+    payload = config_metadata()
+    payload["settings"] = asdict(cfg)
     if getattr(args, "format", "text") == "json":
-        print(json.dumps(asdict(cfg), indent=2, ensure_ascii=False))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
-        print(f"Config: {current_config_path()}")
+        status = "exists" if payload["config_exists"] else "not created yet; using implicit defaults"
+        print(f"Config: {current_config_path()} ({status})")
+        if payload["using_implicit_defaults"]:
+            print("Run 'agent-skills setup' to save a config before real push/pull/sync operations.")
         print(json.dumps(asdict(cfg), indent=2, ensure_ascii=False))
 
 
@@ -1684,7 +1729,7 @@ def add_output_filter_args(parser: argparse.ArgumentParser, include_status_flags
 
 
 def add_sync_flags(parser: argparse.ArgumentParser, include_message: bool = False) -> None:
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="preview file copies, commit, and push without writing files or modifying git state")
     parser.add_argument("--mirror", action="store_true", help="delete destination files that are not in source")
     parser.add_argument("--force", action="store_true", help="allow overwriting files reported as conflicts")
     parser.add_argument("--strict", action="store_true", help="fail instead of skipping missing source target directories")
@@ -1739,20 +1784,50 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--no-ascii", dest="ascii_art", action="store_false")
     plan.set_defaults(func=cmd_plan, ascii_art=True)
 
-    pull = sub.add_parser("pull", help="sync repo skills into local installed skill dirs")
+    pull = sub.add_parser(
+        "pull",
+        help="sync repo skills into local installed skill dirs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""
+        Examples:
+          agent-skills pull --dry-run          # preview repo skills -> local installed skill directories
+          agent-skills pull                   # apply repo skills -> local installed skill directories with backups
+          agent-skills pull --mirror --yes    # make local match repo; may delete local-only files
+        """),
+    )
     add_sync_flags(pull)
     pull.add_argument("--no-pull", action="store_true", help="skip git pull --ff-only")
     pull.add_argument("--no-backup", dest="backup", action="store_false", help="do not back up local skill directories before writing")
     pull.set_defaults(func=cmd_pull, backup=True)
 
-    push = sub.add_parser("push", help="sync local installed skills into repo, commit, and push")
+    push = sub.add_parser(
+        "push",
+        help="sync local installed skills into repo, commit, and push",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""
+        Examples:
+          agent-skills push --dry-run              # preview local -> repo without writing
+          agent-skills push -m "Sync my skills"    # copy, commit, and push local skills
+          agent-skills push --mirror --yes         # make repo match local; may delete repo-only files
+        """),
+    )
     add_sync_flags(push, include_message=True)
     push.add_argument("--no-pull", action="store_true", help="skip git pull --ff-only")
     push.add_argument("--allow-dirty", action="store_true", help="allow starting while repo already has uncommitted changes")
     push.add_argument("--create-repo", action="store_true", help="create repo if missing")
     push.set_defaults(func=cmd_push)
 
-    sync = sub.add_parser("sync", help="safe two-step sync: pull then push")
+    sync = sub.add_parser(
+        "sync",
+        help="safe two-step sync: pull then push",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""
+        Examples:
+          agent-skills sync --dry-run          # preview the safe two-step flow
+          agent-skills sync                   # pull repo -> local, then push local -> repo
+          agent-skills sync -m "Sync skills"  # use a custom commit message for the push phase
+        """),
+    )
     add_sync_flags(sync, include_message=True)
     sync.add_argument("--no-pull", action="store_true", help="skip git pull --ff-only before pull phase")
     sync.add_argument("--no-backup", action="store_true", help="do not back up local skill directories before pull phase")
@@ -1838,11 +1913,20 @@ def build_parser() -> argparse.ArgumentParser:
     open_cmd.add_argument("--print", dest="print_only", action="store_true", help="print path without launching a desktop opener")
     open_cmd.set_defaults(func=cmd_open)
 
-    new = sub.add_parser("new", help="create a new skill skeleton")
-    new.add_argument("name")
-    new.add_argument("--target", required=True)
-    new.add_argument("--repo", action="store_true", help="create in repository target instead of local target")
-    new.add_argument("--force", action="store_true")
+    new = sub.add_parser(
+        "new",
+        help="create a new skill skeleton",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""
+        Examples:
+          agent-skills new "Docker Management" --target claude
+          agent-skills new "Work Skill" --target my-agent --repo
+        """),
+    )
+    new.add_argument("name", help="human-readable skill name; converted to a lowercase directory slug")
+    new.add_argument("--target", required=True, help="configured target name such as claude, hermes, or a custom target")
+    new.add_argument("--repo", action="store_true", help="create the skill under the repository target instead of the installed local agent target")
+    new.add_argument("--force", action="store_true", help="overwrite an existing skill directory if it already exists")
     new.set_defaults(func=cmd_new)
 
     export = sub.add_parser("export", help="export a target's skills as a zip archive")
