@@ -13,6 +13,12 @@ authors = [{name = "Leo"}]
 dependencies = []
 
 [project.optional-dependencies]
+# The optional Qt desktop GUI. The CLI itself stays standard-library-only;
+# PySide6 is only needed for `agent-skills gui`.
+# Install with: python3 -m pip install -e ".[qt]"
+qt = [
+    "PySide6>=6.6",
+]
 # Contributor tooling only; the runtime stays standard-library-only.
 # Install with: python3 -m pip install -e ".[dev]"
 dev = [
@@ -31,7 +37,15 @@ Repository = "https://github.com/leoliao0606-creator/agent-skills-manager.git"
 Issues = "https://github.com/leoliao0606-creator/agent-skills-manager/issues"
 
 [tool.setuptools]
-packages = ["agent_skills_manager"]
+packages = [
+    "agent_skills_manager",
+    "agent_skills_manager.qtgui",
+    "agent_skills_manager.qtgui.pages",
+    "agent_skills_manager.qtgui.widgets",
+]
+
+[tool.setuptools.package-data]
+"agent_skills_manager.qtgui" = ["resources/*.qss"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

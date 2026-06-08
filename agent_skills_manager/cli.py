@@ -13,7 +13,7 @@ the public names that scripts and tests rely on. The implementation lives in:
   validate  skill structure/metadata/secret validation
   skills    list/search/show/open/new/export/import/restore commands
   commands  scan/status/push/pull/sync/diff/doctor/setup + config/target/profile
-  gui       experimental Tkinter window
+  gui       entry shim for the optional Qt desktop GUI (qtgui package)
 
 The tool intentionally uses only the Python standard library so it can run on a
 fresh VPS or laptop without bootstrapping dependencies.
@@ -25,7 +25,9 @@ import sys
 import textwrap
 from typing import List, Optional
 
-from . import config, fsutil, gitutil, sync, tui, validate, skills, commands, gui
+# These submodules are part of the public namespace so scripts and tests can
+# patch cli.<module>.<name>; they are intentionally re-exported, not used here.
+from . import config, fsutil, gitutil, sync, tui, validate, skills, commands, gui  # noqa: F401
 
 # ----- Re-exported public API (kept stable for scripts and tests) -----
 from .config import (  # noqa: F401
@@ -408,7 +410,7 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--yes", action="store_true")
     restore.set_defaults(func=cmd_restore_backup)
 
-    sub.add_parser("gui", help="open experimental graphical settings and sync window").set_defaults(func=cmd_gui)
+    sub.add_parser("gui", help="open the optional Qt desktop GUI (requires the [qt] extra)").set_defaults(func=cmd_gui)
     install = sub.add_parser("install-shell", help="install POSIX shell wrapper commands into ~/bin (fallback for source checkouts)")
     install.add_argument("--bindir", default="~/bin")
     install.set_defaults(func=cmd_install_shell)
