@@ -111,12 +111,17 @@ from .validate import (  # noqa: F401
 )
 from .skills import (  # noqa: F401
     skill_records,
+    skill_summary,
+    compare_skill_records,
     resolve_skill_spec,
     skill_template,
     cmd_list,
     cmd_search,
     cmd_show,
     cmd_open,
+    cmd_preview,
+    cmd_compare,
+    cmd_copy_skill,
     cmd_new,
     cmd_export,
     cmd_import,
@@ -151,7 +156,7 @@ from .commands import (  # noqa: F401
     cmd_profile_use,
     cmd_install_shell,
 )
-from .gui import cmd_gui, gui_action_command  # noqa: F401
+from .gui import cmd_gui, gui_action_command, gui_copy_skill_command  # noqa: F401
 
 
 # ----- Parser -----
@@ -368,6 +373,29 @@ def build_parser() -> argparse.ArgumentParser:
     open_cmd.add_argument("--repo", action="store_true")
     open_cmd.add_argument("--print", dest="print_only", action="store_true", help="print path without launching a desktop opener")
     open_cmd.set_defaults(func=cmd_open)
+
+    preview = sub.add_parser("preview", help="preview one target's skills with metadata")
+    preview.add_argument("target", help="configured target name such as claude or hermes")
+    preview.add_argument("--location", choices=["local", "repo"], default="local")
+    preview.add_argument("--format", choices=["text", "json", "names"], default="text")
+    preview.set_defaults(func=cmd_preview)
+
+    compare = sub.add_parser("compare", help="compare the skills of two targets")
+    compare.add_argument("target_a")
+    compare.add_argument("target_b")
+    compare.add_argument("--a-location", choices=["local", "repo"], default="local", help="location for target_a")
+    compare.add_argument("--b-location", choices=["local", "repo"], default="local", help="location for target_b")
+    compare.add_argument("--format", choices=["text", "json"], default="text")
+    compare.set_defaults(func=cmd_compare)
+
+    copy_skill = sub.add_parser("copy-skill", help="copy/apply one skill from one target to another")
+    copy_skill.add_argument("spec", help="source skill as target:skill")
+    copy_skill.add_argument("--to-target", required=True, help="destination target name")
+    copy_skill.add_argument("--from-location", choices=["local", "repo"], default="local")
+    copy_skill.add_argument("--to-location", choices=["local", "repo"], default="local")
+    add_sync_flags(copy_skill)
+    copy_skill.add_argument("--no-backup", dest="backup", action="store_false", help="skip backing up the destination skill before overwriting")
+    copy_skill.set_defaults(func=cmd_copy_skill, backup=True)
 
     new = sub.add_parser(
         "new",

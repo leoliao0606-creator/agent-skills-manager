@@ -152,6 +152,35 @@ agent-skills open claude:docker-management --print
 
 Skill specs use `target:skill-path`. If a skill name is unique, the target prefix can be omitted.
 
+### Preview, compare, and copy skills across agents
+
+```bash
+agent-skills preview claude                       # name / version / description per skill
+agent-skills preview claude --location repo
+agent-skills preview claude --format json
+
+agent-skills compare claude hermes                # only-A / only-B / same / differing
+agent-skills compare claude claude --a-location local --b-location repo
+agent-skills compare claude hermes --format json
+
+agent-skills copy-skill claude:demo --to-target hermes            # apply one skill A -> B
+agent-skills copy-skill claude:demo --to-target hermes --dry-run
+agent-skills copy-skill claude:demo --to-target hermes --to-location repo
+```
+
+`preview` and `compare` read either the installed (`local`) or repository (`repo`)
+copy of each side independently, so you can also compare a single target's local
+vs repo. `compare` classifies every skill by name and directory content:
+
+- `only_a` / `only_b`: the skill exists on only one side.
+- `same`: present on both sides with identical files.
+- `different`: present on both sides but the files differ.
+
+`copy-skill` copies one skill directory from the source spec into `--to-target`,
+reusing the same copy engine as `push`/`pull`. It backs up the destination target
+before overwriting an existing local skill, refuses conflicting overwrites without
+`--force`, and honours `--dry-run`, `--mirror`, and `--yes`.
+
 ### Create a new skill skeleton
 
 ```bash

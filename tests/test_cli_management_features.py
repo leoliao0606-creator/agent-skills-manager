@@ -172,6 +172,89 @@ class ManagementFeatureTests(unittest.TestCase):
                     cli.cmd_import(argparse.Namespace(path=str(archive), target="claude", repo=False, dry_run=False, mirror=False, force=False, strict=False, yes=True))
                 self.assertTrue((imported / "demo-skill" / "SKILL.md").exists())
 
+    @staticmethod
+    def _write_skill(root: Path, name: str, *, version="1.0.0", description="demo", body="body"):
+        skill = root / name
+        skill.mkdir(parents=True, exist_ok=True)
+        (skill / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: {description}\nversion: {version}\n---\n\n# {name}\n\n{body}\n",
+            encoding="utf-8",
+        )
+        return skill
+
+    def test_preview_lists_metadata_as_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "local"
+            self._write_skill(local, "demo", version="2.1.0", description="my demo")
+            cfg = cli.Config(repo_dir=str(root / "repo"), targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)])
+            stdout = io.StringIO()
+            with patch.object(cli.config, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
+                cli.cmd_preview(ns(target="claude", location="local", format="json"))
+        rows = json.loads(stdout.getvalue())
+        self.assertEqual(rows[0]["name"], "demo")
+        self.assertEqual(rows[0]["version"], "2.1.0")
+        self.assertEqual(rows[0]["description"], "my demo")
+
+    def test_compare_classifies_only_and_common(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            a_local = root / "a"
+            b_local = root / "b"
+            self._write_skill(a_local, "shared-same")
+            self._write_skill(b_local, "shared-same")
+            self._write_skill(a_local, "shared-diff", description="a")
+            self._write_skill(b_local, "shared-diff", description="b")
+            self._write_skill(a_local, "only-a")
+            self._write_skill(b_local, "only-b")
+            cfg = cli.Config(repo_dir=str(root / "repo"), targets=[
+                cli.SkillTarget("agentA", str(a_local), "a-skills", True),
+                cli.SkillTarget("agentB", str(b_local), "b-skills", True),
+            ])
+            stdout = io.StringIO()
+            with patch.object(cli.config, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
+                cli.cmd_compare(ns(target_a="agentA", target_b="agentB", a_location="local", b_location="local", format="json"))
+        statuses = {row["name"]: row["status"] for row in json.loads(stdout.getvalue())}
+        self.assertEqual(statuses["shared-same"], "same")
+        self.assertEqual(statuses["shared-diff"], "different")
+        self.assertEqual(statuses["only-a"], "only_a")
+        self.assertEqual(statuses["only-b"], "only_b")
+
+    def test_copy_skill_roundtrip_with_backup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            a_local = root / "a"
+            b_local = root / "b"
+            self._write_skill(a_local, "demo", description="from-a")
+            cfg = cli.Config(repo_dir=str(root / "repo"), backups_dir=str(root / "backups"), targets=[
+                cli.SkillTarget("agentA", str(a_local), "a-skills", True),
+                cli.SkillTarget("agentB", str(b_local), "b-skills", True),
+            ])
+            args = ns(spec="agentA:demo", to_target="agentB", from_location="local", to_location="local")
+            with patch.object(cli.config, "load_config", return_value=cfg):
+                cli.cmd_copy_skill(args)
+                self.assertTrue((b_local / "demo" / "SKILL.md").exists())
+                # Edit the destination, copy again -> the prior version is backed up.
+                (b_local / "demo" / "SKILL.md").write_text("edited\n", encoding="utf-8")
+                cli.cmd_copy_skill(args)
+            backups = list((root / "backups").glob("*/agentB/demo/SKILL.md"))
+            self.assertTrue(backups, "expected a backup of the overwritten destination skill")
+            self.assertIn("from-a", (b_local / "demo" / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_copy_skill_dry_run_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            a_local = root / "a"
+            b_local = root / "b"
+            self._write_skill(a_local, "demo")
+            cfg = cli.Config(repo_dir=str(root / "repo"), backups_dir=str(root / "backups"), targets=[
+                cli.SkillTarget("agentA", str(a_local), "a-skills", True),
+                cli.SkillTarget("agentB", str(b_local), "b-skills", True),
+            ])
+            with patch.object(cli.config, "load_config", return_value=cfg):
+                cli.cmd_copy_skill(ns(spec="agentA:demo", to_target="agentB", from_location="local", to_location="local", dry_run=True))
+            self.assertFalse((b_local / "demo").exists())
+
     def test_backup_and_restore_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

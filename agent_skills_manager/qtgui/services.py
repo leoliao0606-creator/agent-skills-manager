@@ -9,13 +9,14 @@ and reshapes the result into plain dataclasses the Qt widgets can render.
 from __future__ import annotations
 
 import argparse
+import difflib
 import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-from .. import commands, config, fsutil, gitutil, sync, validate
+from .. import commands, config, fsutil, gitutil, skills, sync, validate
 from ..config import SkillTarget
 
 
@@ -115,6 +116,35 @@ class ValidationFinding:
     path: str            # file path to open / copy
     message: str
     kind: str            # structure | metadata | duplicate | secret
+
+
+@dataclass
+class SkillSummary:
+    target: str
+    name: str            # relative skill path, e.g. "category/skill-name"
+    location: str        # local | repo
+    path: str            # skill directory
+    skill_file: str      # SKILL.md path
+    meta_name: str       # frontmatter name
+    description: str
+    version: str
+
+
+@dataclass
+class SkillComparisonRow:
+    name: str
+    status: str          # only_a | only_b | same | different
+    a: Optional[SkillSummary]
+    b: Optional[SkillSummary]
+
+
+@dataclass
+class TargetComparison:
+    target_a: str
+    location_a: str
+    target_b: str
+    location_b: str
+    rows: List[SkillComparisonRow] = field(default_factory=list)
 
 
 @dataclass
@@ -303,6 +333,52 @@ def _split_warning_location(warning: str) -> tuple:
     if len(parts) == 3 and parts[1].strip().isdigit():
         return parts[0], parts[1].strip()
     return "", ""
+
+
+# --------------------------------------------------------------------------- #
+# Skill preview + comparison (read-only)
+# --------------------------------------------------------------------------- #
+
+def _to_summary(record: dict, location: str) -> SkillSummary:
+    meta = skills.skill_summary(Path(record["skill_file"]))
+    return SkillSummary(
+        target=record["target"],
+        name=record["name"],
+        location=location,
+        path=record["path"],
+        skill_file=record["skill_file"],
+        meta_name=meta["name"],
+        description=meta["description"],
+        version=meta["version"],
+    )
+
+
+def preview_target(target: str, location: str = "local") -> List[SkillSummary]:
+    """Summarize one target's skills with frontmatter metadata."""
+    cfg = config.load_config()
+    return [_to_summary(rec, location) for rec in skills.skill_records(cfg, location, target)]
+
+
+def compare_targets(target_a: str, location_a: str, target_b: str, location_b: str) -> TargetComparison:
+    """Compare two targets' skills by name and directory content (read-only)."""
+    cfg = config.load_config()
+    comparison = TargetComparison(target_a=target_a, location_a=location_a, target_b=target_b, location_b=location_b)
+    for row in skills.compare_skill_records(cfg, target_a, location_a, target_b, location_b):
+        a = _to_summary(row["a"], location_a) if row["a"] else None
+        b = _to_summary(row["b"], location_b) if row["b"] else None
+        comparison.rows.append(SkillComparisonRow(name=str(row["name"]), status=str(row["status"]), a=a, b=b))
+    return comparison
+
+
+def skill_unified_diff(a_skill_file: str, b_skill_file: str, a_label: str, b_label: str) -> str:
+    """Unified diff of two SKILL.md files; empty when a side is missing."""
+    a_path = Path(a_skill_file) if a_skill_file else None
+    b_path = Path(b_skill_file) if b_skill_file else None
+    if not a_path or not b_path or not a_path.exists() or not b_path.exists():
+        return ""
+    a_lines = a_path.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+    b_lines = b_path.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+    return "".join(difflib.unified_diff(a_lines, b_lines, fromfile=a_label, tofile=b_label))
 
 
 # --------------------------------------------------------------------------- #
