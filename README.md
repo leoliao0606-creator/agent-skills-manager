@@ -54,45 +54,104 @@ Detected skill directories are pre-selected. Users can enable or disable any tar
 
 ## Install
 
-### macOS / Linux
+The application has **no third-party Python dependencies**, so it runs anywhere Python 3.9+ and Git are available. Pick whichever method fits how you like to install tools — they all give you the same `agent-skills` CLI.
 
-Use a virtual environment. This works consistently across machines and avoids modifying the system Python installation.
+All methods start from a clone:
 
 ```bash
 git clone https://github.com/leoliao0606-creator/agent-skills-manager.git
 cd agent-skills-manager
+```
+
+| Method | Best when | Notes |
+|---|---|---|
+| [Run from source, no install](#option-a-run-from-source-no-install) | You want zero setup or to try it once | No `pip` at all; you type `python3 -m agent_skills_manager.cli` |
+| [pipx](#option-b-pipx) | You want a global `agent-skills` command, isolated | pipx manages the virtual environment for you |
+| [pip --user](#option-c-pip-install---user) | You want it on your `PATH` without a venv | Installs into your per-user site directory |
+| [Virtual environment](#option-d-virtual-environment) | You want full isolation and control | The most portable, reproducible option |
+| [System pip](#option-e-system-pip) | You knowingly manage your own environment | May be blocked by PEP 668; not recommended |
+
+### Option A: Run from source, no install
+
+Because the runtime is standard-library only, you don't have to install anything. From the cloned directory:
+
+```bash
+python3 -m agent_skills_manager.cli --help
+```
+
+On Windows use `py` instead of `python3`. Every command in this README that starts with `agent-skills` also works as `python3 -m agent_skills_manager.cli`. To make it shorter, add an alias:
+
+```bash
+alias agent-skills='python3 -m agent_skills_manager.cli'
+```
+
+### Option B: pipx
+
+[pipx](https://pipx.pypa.io/) installs the CLI into its own isolated environment and puts `agent-skills` on your `PATH`, without you managing a venv:
+
+```bash
+pipx install .
+agent-skills --help
+```
+
+To update after pulling new commits: `pipx install --force .`
+
+### Option C: pip install --user
+
+Installs into your per-user site directory, so it lands on your `PATH` without a venv and without touching system files:
+
+```bash
+python3 -m pip install --user .
+agent-skills --help
+```
+
+If `agent-skills` is not found afterward, your user scripts directory is not on `PATH`. Use the module form `python3 -m agent_skills_manager.cli`, or add the directory printed by `python3 -m site --user-base` (its `bin` on macOS/Linux, `Scripts` on Windows) to your `PATH`.
+
+On Debian/Ubuntu systems that enforce PEP 668, `--user` may be blocked; use pipx or a virtual environment instead.
+
+### Option D: Virtual environment
+
+The most portable and reproducible option. It works consistently across machines and never modifies the system Python.
+
+macOS / Linux:
+
+```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .
 agent-skills --help
 ```
 
-If the `agent-skills` command is not found after installation, use the module form:
-
-```bash
-python -m agent_skills_manager.cli --help
-```
-
-On Debian/Ubuntu systems that enforce PEP 668, avoid installing directly into the system Python. Use the virtual environment commands above.
-
-### Windows PowerShell
-
-Use a virtual environment. This avoids modifying the system Python installation.
+Windows PowerShell:
 
 ```powershell
-git clone https://github.com/leoliao0606-creator/agent-skills-manager.git
-cd agent-skills-manager
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e .
 agent-skills --help
 ```
 
-If the `agent-skills` command is not found after installation, use the module form:
+The `-e` (editable) install means changes you pull or make to the source take effect without reinstalling.
 
-```powershell
-py -m agent_skills_manager.cli --help
+### Option E: System pip
+
+If you knowingly manage your own Python environment, you can install into it directly:
+
+```bash
+python3 -m pip install .
 ```
+
+This is not recommended: many systems (Debian/Ubuntu, Homebrew Python) enforce PEP 668 and will reject it to protect the system Python. Prefer pipx, `--user`, or a virtual environment. If you understand the risk, `--break-system-packages` overrides the block.
+
+### If the `agent-skills` command is not found
+
+This only means the install location isn't on your `PATH`. The module form always works from the cloned directory, regardless of install method:
+
+```bash
+python3 -m agent_skills_manager.cli --help
+```
+
+On Windows, use `py -m agent_skills_manager.cli --help`.
 
 ## Quick start
 
@@ -203,7 +262,7 @@ Default ignored patterns and `.agent-skills-ignore` support are documented in [d
 
 ## Development
 
-Run from source after activating the virtual environment from the install section:
+Run from source after activating the virtual environment from [Option D](#option-d-virtual-environment):
 
 ```bash
 python -m agent_skills_manager.cli --help
