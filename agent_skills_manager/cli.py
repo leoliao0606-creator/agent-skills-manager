@@ -103,6 +103,8 @@ from .tui import (  # noqa: F401
 from .validate import (  # noqa: F401
     parse_frontmatter,
     validate_skill_dir,
+    scan_file_for_secrets,
+    is_placeholder_secret,
     cmd_validate,
 )
 from .skills import (  # noqa: F401

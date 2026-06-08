@@ -11,7 +11,46 @@ from . import config, fsutil
 from .config import Config, SkillTarget
 
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
-SECRET_RE = re.compile(r"(?i)(api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?[A-Za-z0-9_./+\-=]{20,}")
+SECRET_RE = re.compile(r"(?i)(?:api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?(?P<value>[A-Za-z0-9_./+\-=]{20,})")
+PRIVATE_KEY_MARKER = "-----BEGIN PRIVATE KEY-----"
+
+# A line containing this marker (the detect-secrets convention) is treated as a
+# reviewed false positive and skipped.
+SECRET_ALLOWLIST_PRAGMA = "pragma: allowlist secret"
+
+# Values that are obviously documentation placeholders rather than real
+# credentials. Skill repos are documentation-heavy, so suppressing these keeps
+# the warning list trustworthy.
+SECRET_PLACEHOLDER_TOKENS = (
+    "xxxx", "your", "example", "changeme", "change_me", "placeholder",
+    "dummy", "sample", "redacted", "todo", "fixme", "replace", "insert",
+)
+
+
+def is_placeholder_secret(value: str) -> bool:
+    lowered = value.lower()
+    return any(token in lowered for token in SECRET_PLACEHOLDER_TOKENS)
+
+
+def scan_file_for_secrets(path: Path) -> List[str]:
+    """Return ``path:line: ...`` warnings for likely secrets in a file.
+
+    Detection is line-based so warnings carry a line number; a line is skipped
+    when it carries an inline ``# pragma: allowlist secret`` marker or when the
+    matched value looks like a documentation placeholder.
+    """
+    warnings: List[str] = []
+    content = path.read_text(encoding="utf-8", errors="ignore")
+    for lineno, line in enumerate(content.splitlines(), start=1):
+        if SECRET_ALLOWLIST_PRAGMA in line.lower():
+            continue
+        if PRIVATE_KEY_MARKER in line:
+            warnings.append(f"{path}:{lineno}: possible private key detected")
+            continue
+        match = SECRET_RE.search(line)
+        if match and not is_placeholder_secret(match.group("value")):
+            warnings.append(f"{path}:{lineno}: possible secret detected")
+    return warnings
 
 
 def parse_frontmatter(text: str) -> Dict[str, str]:
@@ -44,9 +83,7 @@ def validate_skill_dir(skill_dir: Path) -> Tuple[List[str], List[str]]:
                 errors.append(f"{skill_file}: missing frontmatter field '{required}'")
     for path in skill_dir.rglob("*"):
         if path.is_file() and path.stat().st_size <= 1024 * 1024:
-            content = path.read_text(encoding="utf-8", errors="ignore")
-            if "-----BEGIN PRIVATE KEY-----" in content or SECRET_RE.search(content):
-                warnings.append(f"{path}: possible secret detected")
+            warnings.extend(scan_file_for_secrets(path))
     return errors, warnings
 
 
