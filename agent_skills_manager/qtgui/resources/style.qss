@@ -1,0 +1,187 @@
+/* Agent Skills Manager — light theme.
+   Modern, tool-like (GitHub Desktop / Linear / VS Code settings).
+   Palette: bg #f7f8fa, panel #ffffff, text #1f2328, muted #6e7781,
+   primary #3b82f6, success #22c55e, warning #f59e0b, danger #ef4444,
+   border #d0d7de. */
+
+QWidget {
+    background: #f7f8fa;
+    color: #1f2328;
+    font-size: 13px;
+}
+
+/* Left navigation */
+QListWidget#nav {
+    background: #ffffff;
+    border: none;
+    border-right: 1px solid #d0d7de;
+    outline: 0;
+    padding-top: 8px;
+}
+QListWidget#nav::item {
+    height: 36px;
+    padding-left: 16px;
+    border: none;
+    color: #1f2328;
+}
+QListWidget#nav::item:selected {
+    background: #eaf1fd;
+    color: #1f55c0;
+    border-left: 3px solid #3b82f6;
+}
+QListWidget#nav::item:hover:!selected {
+    background: #f0f2f5;
+}
+
+/* Header / titles */
+QLabel#pageTitle {
+    font-size: 20px;
+    font-weight: 600;
+}
+QLabel#pageSubtitle, QLabel[muted="true"] {
+    color: #6e7781;
+}
+QLabel#cardTitle {
+    color: #6e7781;
+    font-size: 11px;
+    font-weight: 600;
+}
+QLabel#cardValue {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+/* Cards */
+QFrame[card="true"] {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+}
+
+/* Buttons */
+QPushButton {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    min-height: 32px;
+    padding: 0 14px;
+}
+QPushButton:hover {
+    background: #f0f2f5;
+}
+QPushButton:disabled {
+    color: #9aa4b2;
+    background: #f3f4f6;
+}
+QPushButton#primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+}
+QPushButton#primary:hover {
+    background: #2f6fe0;
+}
+QPushButton#primary:disabled {
+    background: #aac4f6;
+    border-color: #aac4f6;
+    color: #ffffff;
+}
+QPushButton#danger {
+    background: #ffffff;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    font-weight: 600;
+}
+QPushButton#danger:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+QPushButton#danger:disabled {
+    border-color: #f3b6b6;
+    color: #f3b6b6;
+    background: #ffffff;
+}
+
+/* Inputs */
+QLineEdit, QComboBox, QPlainTextEdit, QTextEdit {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    min-height: 30px;
+    padding: 0 8px;
+    selection-background-color: #cfe1fc;
+}
+QPlainTextEdit, QTextEdit {
+    padding: 6px 8px;
+}
+QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {
+    border-color: #3b82f6;
+}
+
+/* Tables */
+QTableView {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    gridline-color: #eaecef;
+    selection-background-color: #eaf1fd;
+    selection-color: #1f2328;
+}
+QTableView::item {
+    padding: 4px 6px;
+}
+QHeaderView::section {
+    background: #f3f4f6;
+    color: #6e7781;
+    border: none;
+    border-bottom: 1px solid #d0d7de;
+    padding: 6px 8px;
+    font-weight: 600;
+}
+
+/* Lists (diff/changes) */
+QListWidget {
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    outline: 0;
+}
+QListWidget::item {
+    min-height: 26px;
+    padding: 2px 6px;
+}
+
+/* Status badges (badge + level set via dynamic properties) */
+QLabel[badge="true"] {
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-weight: 600;
+    font-size: 11px;
+}
+QLabel[badge="true"][level="ok"]    { background: #e7f8ee; color: #1a7f4b; }
+QLabel[badge="true"][level="warn"]  { background: #fef3e2; color: #9a6700; }
+QLabel[badge="true"][level="error"] { background: #fde8e8; color: #b42318; }
+QLabel[badge="true"][level="muted"] { background: #eef0f3; color: #6e7781; }
+
+/* Red emphasis for destructive counts */
+QLabel#dangerCount {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Monospace log pane */
+QPlainTextEdit#logView {
+    background: #1f2328;
+    color: #e6e6e6;
+    font-family: "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+    border: 1px solid #2a2f3a;
+}
+
+QStatusBar {
+    background: #ffffff;
+    border-top: 1px solid #d0d7de;
+    color: #6e7781;
+}
+
+QCheckBox { spacing: 6px; }

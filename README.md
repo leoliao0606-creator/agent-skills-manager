@@ -1,6 +1,6 @@
 # Agent Skills Manager
 
-Agent Skills Manager is a cross-platform CLI, with an optional experimental GUI, for managing private AI agent skill libraries.
+Agent Skills Manager is a cross-platform CLI, with an optional Qt desktop GUI, for managing private AI agent skill libraries.
 
 It scans locally installed skills, maps them to a Git repository, and gives users safe commands to back up, validate, preview, restore, and sync skills across machines.
 
@@ -14,9 +14,9 @@ Runtime requirements:
 
 - Python 3.9+
 - Git
-- Tkinter only if you want to use the optional experimental GUI
+- PySide6 only if you want to use the optional Qt desktop GUI (`pip install "agent-skills-manager[qt]"`)
 
-No third-party Python package is required by the application itself.
+No third-party Python package is required by the CLI itself.
 
 ## What it does
 
@@ -33,7 +33,7 @@ No third-party Python package is required by the application itself.
 - Validates skill structure, metadata, duplicate names, and possible secrets.
 - Provides scriptable config, target, and profile commands.
 - Lists, searches, shows, creates, imports, and exports skills.
-- Provides an experimental Tkinter settings window with `agent-skills gui`.
+- Provides an optional Qt desktop GUI with `agent-skills gui`.
 
 The setup wizard presents a terminal multi-select checklist of common agent skill locations:
 
@@ -70,6 +70,8 @@ cd agent-skills-manager
 | [pip --user](#option-c-pip-install---user) | You want it on your `PATH` without a venv | Installs into your per-user site directory |
 | [Virtual environment](#option-d-virtual-environment) | You want full isolation and control | The most portable, reproducible option |
 | [System pip](#option-e-system-pip) | You knowingly manage your own environment | May be blocked by PEP 668; not recommended |
+
+> **Optional Qt GUI:** the CLI needs no third-party packages, but the desktop GUI does. To install it, add the `[qt]` extra to any pip-based method above — for example `pip install -e ".[qt]"` or `pipx install ".[qt]"`. See [Optional Qt GUI](#optional-qt-gui) below.
 
 ### Option A: Run from source, no install
 
@@ -254,11 +256,26 @@ Agent Skills Manager is conservative by default:
 
 Default ignored patterns and `.agent-skills-ignore` support are documented in [docs/configuration.md](docs/configuration.md#excludes-and-ignore-files).
 
+## Optional Qt GUI
+
+Agent Skills Manager includes an optional PySide6 desktop GUI for people who prefer a visual workflow. The CLI stays the primary, dependency-free interface; the GUI is optional and reuses the exact same configuration and sync logic — it never reimplements business rules.
+
+Install the `[qt]` extra and launch it:
+
+```bash
+python3 -m pip install "agent-skills-manager[qt]"   # or, from a clone: pip install -e ".[qt]"
+agent-skills gui
+```
+
+The window has eight pages in a left-hand nav — Overview, Targets, Sync, Diff, Validate, Backups, Settings, and Logs. It keeps the CLI's safety model: previews are read-only, dry-run is on by default, deleting a target never deletes files, and mirror/force/restore require confirmation. If PySide6 is not installed, `agent-skills gui` prints an install hint and points you back to the CLI commands instead.
+
+See [docs/platforms.md](docs/platforms.md#optional-qt-gui) for a per-page tour.
+
 ## Documentation
 
 - [Command reference](docs/commands.md) — every subcommand, flags, and output formats (scan, status, diff, push, pull, sync, list/search/show, new, validate, import/export, backups).
 - [Configuration, targets, and profiles](docs/configuration.md) — config file, scriptable config/target commands, profiles, excludes, and the recommended repository layout.
-- [Platforms, GUI, and publishing](docs/platforms.md) — Windows/macOS/Linux notes, the experimental GUI, and publishing a new private skills repository.
+- [Platforms, GUI, and publishing](docs/platforms.md) — Windows/macOS/Linux notes, the optional Qt GUI, and publishing a new private skills repository.
 
 ## Development
 

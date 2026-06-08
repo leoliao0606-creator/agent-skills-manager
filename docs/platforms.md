@@ -3,15 +3,31 @@
 Platform-specific notes, the optional GUI, and how to publish a new private
 skills repository. For installation, see the [README](../README.md).
 
-## GUI
+## Optional Qt GUI
+
+Agent Skills Manager includes an optional PySide6 desktop GUI for users who prefer a visual workflow.
+
+Install:
 
 ```bash
+python -m pip install "agent-skills-manager[qt]"
 agent-skills gui
 ```
 
-The GUI is experimental and intentionally secondary to the CLI. It edits the same config (including adding and removing targets) and runs `scan`, `status`, `diff`, `validate`, `pull`, and `push` as background actions, streaming their output into a log pane so the window stays responsive. A dry-run toggle previews `push`/`pull`, and a mirror toggle (with a delete confirmation) enables mirror sync. The CLI still has the full feature set.
+The CLI remains the primary, dependency-free interface. The GUI is optional and uses the same configuration and sync logic as the CLI — it never reimplements business rules.
 
-Tkinter is included with many Python installers, but not all minimal Linux distributions include it by default. If the GUI is unavailable, use the CLI commands instead.
+The window has eight pages in a left-hand nav:
+
+- **Overview** — a dashboard of config, repository, and target status.
+- **Targets** — edit the mapping of local skill directories to repo subdirectories. Removing a target only changes config; it never deletes files.
+- **Sync** — preview push/pull safely (read-only), then apply. Dry-run is on by default; mirror and force require confirmation, and Apply stays disabled while conflicts exist.
+- **Diff** — per-target, file-level view of what differs between local and repo.
+- **Validate** — structure, metadata, duplicate-name, and possible-secret findings.
+- **Backups** — list backups and restore them (a dry-run is required before a real restore).
+- **Settings** — repository, remote, branch, backups directory, excludes, and profile.
+- **Logs** — output from every apply/restore command.
+
+If PySide6 is not installed, `agent-skills gui` prints an install hint and points you at the CLI commands instead.
 
 ## Cross-platform notes
 
