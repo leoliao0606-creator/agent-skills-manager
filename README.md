@@ -175,49 +175,9 @@ agent-skills push --dry-run
 | Create a new skill skeleton | `agent-skills new "Name" --target claude` |
 | Validate skill files | `agent-skills validate` |
 
-The wizard asks for:
+The setup wizard asks for the local checkout path (default `~/agent-skills-library`), a Git remote URL (optional; empty for local-only use), the default branch, which agents to sync, and the local/repository directories for each target. Path prompts support Tab completion where Python `readline` is available.
 
-- Local checkout path for the private skills repository. The default is the generic `~/agent-skills-library`.
-- Git remote URL, such as `git@github.com:username/private-agent-skills.git` or an HTTPS URL. This can be left empty for local-only use.
-- Default branch, usually `main`.
-- Terminal multi-select checklist for which agents to sync.
-- Local skill directories to scan.
-- Repository subdirectories where each skill target should be stored.
-- Whether to clone, initialize, or create the local repository.
-- Whether to do the initial sync.
-
-Path prompts support Tab completion on terminals where Python `readline` is available. If `readline` is unavailable, setup falls back to normal text input.
-
-Recommended first commands:
-
-```bash
-agent-skills doctor
-agent-skills scan
-agent-skills diff --direction push
-agent-skills push --dry-run
-agent-skills push
-```
-
-Configuration is stored in an OS-specific per-user config file:
-
-```text
-Windows: %APPDATA%\agent-skills-manager\config.json
-macOS:   ~/Library/Application Support/agent-skills-manager/config.json
-Linux:   ~/.config/agent-skills-manager/config.json
-```
-
-You can override the config path with:
-
-```bash
-AGENT_SKILLS_CONFIG=/path/to/config.json agent-skills scan
-```
-
-PowerShell:
-
-```powershell
-$env:AGENT_SKILLS_CONFIG="C:\path\to\config.json"
-agent-skills scan
-```
+Configuration is stored in an OS-specific per-user config file and can be overridden with the `AGENT_SKILLS_CONFIG` environment variable. See [docs/configuration.md](docs/configuration.md) for details.
 
 ## Safety model
 
@@ -233,367 +193,13 @@ Agent Skills Manager is conservative by default:
 - Missing target source directories are skipped by default and fail with `--strict`.
 - Likely conflicts are detected using a local sync-state file and require `--force` after review.
 
-Default ignored files and directories include `.git/`, `.env`, virtualenvs, Python caches, `.DS_Store`, and `node_modules/`. You can add a `.agent-skills-ignore` file to a source or destination root, or configure global patterns with:
+Default ignored patterns and `.agent-skills-ignore` support are documented in [docs/configuration.md](docs/configuration.md#excludes-and-ignore-files).
 
-```bash
-agent-skills config set excludes ".git/,.env,__pycache__/,*.pyc,node_modules/"
-```
+## Documentation
 
-## Common commands
-
-### Diagnose configuration
-
-```bash
-agent-skills doctor
-agent-skills doctor --format json
-```
-
-`doctor` checks Git availability, config presence, repository safety, repo initialization, remotes, dirty state, and configured target directories.
-
-### Scan local and repository skills
-
-```bash
-agent-skills scan
-```
-
-By default, `scan` prints only configured targets. A configured target is an agent skills directory selected for sync during setup. Use filters when you want more or less detail:
-
-```bash
-agent-skills scan --all
-agent-skills scan --only configured
-agent-skills scan --only not-configured
-agent-skills scan --only missing
-agent-skills scan --only existing
-agent-skills scan --no-examples
-agent-skills scan --limit 1
-agent-skills scan --format names
-agent-skills scan --format json
-agent-skills scan --color always
-agent-skills scan --color never
-agent-skills scan --no-ascii
-```
-
-Target status labels:
-
-```text
-configured      local skill directory exists and is selected for sync
-not configured  local skill directory exists but is not selected for sync
-not exist       local skill directory is missing
-```
-
-For `not exist`, text output prints only the status line and skips local/repo details because there is no local skill directory to inspect.
-
-### Show status
-
-```bash
-agent-skills status
-agent-skills status --format json
-agent-skills status --no-git
-agent-skills status --no-scan
-```
-
-`status` shows Git status/remotes and the same skill target summary used by `scan`.
-
-### Preview changes
-
-```bash
-agent-skills diff --direction push
-agent-skills diff --direction pull
-agent-skills diff --direction push --mirror
-agent-skills diff --direction push --format json
-
-agent-skills plan push
-agent-skills plan pull
-```
-
-`diff` and `plan` report:
-
-- `add`: source file does not exist in destination.
-- `update`: source and destination differ.
-- `delete`: destination-only file that would be removed by `--mirror`.
-- `conflict`: both sides appear to have changed since the last sync state.
-
-### Initialize a local skills repository skeleton
-
-```bash
-agent-skills init-repo
-agent-skills init-repo --repo ~/agent-skills-library --remote git@github.com:username/private-agent-skills.git
-```
-
-`init-repo` creates a Git repo, target directories, README, `.gitignore`, and `.agent-skills-ignore`.
-
-### Push local skills to the repository
-
-```bash
-agent-skills push --dry-run
-agent-skills push
-agent-skills push -m "Sync my skills"
-agent-skills push --mirror --yes
-```
-
-Useful flags:
-
-```text
---dry-run       preview without copying, committing, or pushing
---mirror        delete destination-only files
---force         allow overwriting files reported as conflicts
---strict        fail instead of skipping missing source targets
---yes           skip destructive mirror confirmation prompts
---no-pull       skip git pull --ff-only before pushing
---allow-dirty   allow starting while the repo already has uncommitted changes
---create-repo   create the repo if missing
-```
-
-`push --dry-run` is allowed even when the repo is dirty; it prints a warning and does not write.
-
-### Pull repository skills into local skill directories
-
-```bash
-agent-skills pull --dry-run
-agent-skills pull
-agent-skills pull --mirror --yes
-agent-skills pull --no-backup
-```
-
-By default, `pull` backs up each local target directory before writing if that target has planned changes.
-
-### Sync both directions
-
-```bash
-agent-skills sync --dry-run
-agent-skills sync
-agent-skills sync -m "Sync skills"
-```
-
-`sync` runs a safe two-step flow:
-
-1. repo -> local (`pull` phase)
-2. local -> repo (`push` phase)
-
-It uses the same dry-run, mirror, strict, force, backup, and dirty-repo flags as `pull` and `push`.
-
-## Config, targets, and profiles
-
-### Scriptable config
-
-```bash
-agent-skills config path
-agent-skills config show
-agent-skills config show --format json
-agent-skills config set repo_dir ~/agent-skills-library
-agent-skills config set remote_url git@github.com:username/private-agent-skills.git
-agent-skills config set default_branch main
-agent-skills config set backups_dir ~/.agent-skills-manager/backups
-agent-skills config set excludes ".git/,.env,__pycache__/"
-```
-
-### Scriptable target management
-
-```bash
-agent-skills target list
-agent-skills target list --format json
-agent-skills target add my-agent --local ~/.my-agent/skills --repo my-agent-skills
-agent-skills target add work-agent --local ~/work/skills --repo work-skills --disabled
-agent-skills target enable my-agent
-agent-skills target disable my-agent
-agent-skills target remove my-agent
-```
-
-### Profiles
-
-Profiles are separate config files for separate skill setups, such as personal, work, public, and experimental libraries.
-
-```bash
-agent-skills profile list
-agent-skills profile create work
-agent-skills profile use work
-agent-skills --profile work scan
-agent-skills --profile work push --dry-run
-```
-
-`profile use NAME` copies a named profile into the default active config. `--profile NAME` uses that profile only for the current invocation.
-
-## Browsing and authoring skills
-
-### List, search, show, and open
-
-```bash
-agent-skills list
-agent-skills list --format names
-agent-skills list --location repo
-agent-skills search docker
-agent-skills search docker --format json
-agent-skills show claude:docker-management
-agent-skills show hermes:software-development/test-driven-development
-agent-skills open claude:docker-management --print
-```
-
-Skill specs use `target:skill-path`. If a skill name is unique, the target prefix can be omitted.
-
-### Create a new skill skeleton
-
-```bash
-agent-skills new "Docker Management" --target claude
-agent-skills new "Work Skill" --target my-agent --repo
-```
-
-This creates:
-
-```text
-skill-name/
-  SKILL.md
-  references/
-  scripts/
-  templates/
-```
-
-### Validate skills
-
-```bash
-agent-skills validate
-agent-skills validate --target claude
-agent-skills validate --location repo
-agent-skills validate --format json
-```
-
-Validation checks:
-
-- each skill has a non-empty `SKILL.md`;
-- `SKILL.md` has frontmatter;
-- frontmatter includes `name` and `description`;
-- skill names are not duplicated in the selected validation scope;
-- small text files do not contain obvious private keys or token-like secrets.
-
-### Import and export
-
-```bash
-agent-skills export --target claude --output claude-skills.zip
-agent-skills export --target hermes --repo --output hermes-repo-skills.zip
-agent-skills import ./claude-skills.zip --target claude
-agent-skills import ./some-skill-directory --target hermes
-agent-skills import ./skills.zip --target claude --dry-run
-```
-
-`import` accepts either a directory or a zip file and uses the same safe additive/mirror behavior as sync operations.
-
-## Backups and restore
-
-List backups:
-
-```bash
-agent-skills backups list
-```
-
-Restore a backup target directory:
-
-```bash
-agent-skills restore-backup ~/.agent-skills-manager/backups/20260604-120000/claude --target claude --dry-run
-agent-skills restore-backup ~/.agent-skills-manager/backups/20260604-120000/claude --target claude --yes
-```
-
-`restore-backup` mirrors the backup directory into the selected local target by default.
-
-## Safe sync vs mirror sync
-
-By default, sync is additive and update-only:
-
-- New files are copied.
-- Changed files are updated.
-- Extra files already present in the destination are not deleted.
-
-To make the destination exactly match the source, use `--mirror`:
-
-```bash
-agent-skills push --mirror --yes
-agent-skills pull --mirror --yes
-```
-
-Use `--mirror` carefully because it can delete files from the destination. Omit `--yes` if you want an interactive confirmation prompt.
-
-## Recommended repository layout
-
-A private skills repository can use this layout:
-
-```text
-private-agent-skills/
-  README.md
-  .agent-skills-ignore
-  claude-skills/
-    some-skill/
-      SKILL.md
-  codex-skills/
-    some-skill/
-      SKILL.md
-  hermes-skills/
-    software-development/
-      some-skill/
-        SKILL.md
-```
-
-The names are configurable. For example, a user could map a custom agent to:
-
-```text
-custom-agent-skills/
-```
-
-## GUI
-
-Run:
-
-```bash
-agent-skills gui
-```
-
-The GUI is experimental and intentionally secondary to the CLI. It can configure common settings and run basic scan/pull/push actions, but the CLI has the full feature set.
-
-Tkinter is included with many Python installers, but not all minimal Linux distributions include it by default. If the GUI is unavailable, use the CLI commands instead.
-
-## Cross-platform notes
-
-### Windows
-
-- Prefer PowerShell or Windows Terminal.
-- Install Git for Windows first.
-- SSH remotes work if GitHub SSH keys are configured.
-- HTTPS remotes work with Git Credential Manager.
-- Paths such as `~/.claude/skills` are expanded through Python's user home handling.
-
-### macOS
-
-- Install Git through Xcode Command Line Tools or Homebrew.
-- The default config file lives under `~/Library/Application Support`.
-- SSH and HTTPS Git remotes are both supported.
-
-### Linux
-
-- Install Git through your distribution package manager.
-- The default config file follows `XDG_CONFIG_HOME` when set, otherwise `~/.config`.
-- `install-shell` is a POSIX fallback for source checkouts, but venv/pip entry points are the recommended install path.
-
-## Publishing a new private skills repository
-
-Create an empty repository on GitHub, GitLab, Gitea, or another Git host. Do not add an initial README if you already initialized the local repository.
-
-Then run:
-
-```bash
-agent-skills setup
-agent-skills doctor
-agent-skills push --dry-run
-agent-skills push
-```
-
-Or configure manually:
-
-```bash
-agent-skills config set repo_dir ~/agent-skills-library
-agent-skills config set remote_url git@github.com:username/private-agent-skills.git
-agent-skills config set default_branch main
-agent-skills target enable claude
-agent-skills init-repo
-agent-skills push --dry-run
-agent-skills push
-```
+- [Command reference](docs/commands.md) — every subcommand, flags, and output formats (scan, status, diff, push, pull, sync, list/search/show, new, validate, import/export, backups).
+- [Configuration, targets, and profiles](docs/configuration.md) — config file, scriptable config/target commands, profiles, excludes, and the recommended repository layout.
+- [Platforms, GUI, and publishing](docs/platforms.md) — Windows/macOS/Linux notes, the experimental GUI, and publishing a new private skills repository.
 
 ## Development
 
@@ -603,32 +209,25 @@ Run from source after activating the virtual environment from the install sectio
 python -m agent_skills_manager.cli --help
 python -m agent_skills_manager.cli doctor
 python -m agent_skills_manager.cli scan
-python -m agent_skills_manager.cli diff --direction push
-python -m agent_skills_manager.cli push --dry-run
-python -m agent_skills_manager.cli pull --dry-run
 ```
 
 If you have not activated a virtual environment, use the platform launcher directly:
 
-macOS / Linux:
-
 ```bash
 python3 -m agent_skills_manager.cli --help
 python3 -m agent_skills_manager.cli doctor
-python3 -m unittest discover -v
 ```
 
-Windows PowerShell:
-
-```powershell
-py -m agent_skills_manager.cli --help
-py -m agent_skills_manager.cli doctor
-py -m unittest discover -v
-```
-
-Run tests from an activated virtual environment:
+Install the contributor tooling (test runner and linter) and run the checks:
 
 ```bash
-python -m py_compile agent_skills_manager/cli.py
-python -m unittest discover -v
+python3 -m pip install -e ".[dev]"
+pytest
+ruff check .
+```
+
+The test suite also runs with the standard library alone:
+
+```bash
+python3 -m unittest discover -v
 ```
