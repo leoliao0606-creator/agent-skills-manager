@@ -15,7 +15,7 @@ class PublicReleaseUsabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "config.json"
             stdout = io.StringIO()
-            with patch.object(cli, "CONFIG_PATH", config_path), contextlib.redirect_stdout(stdout):
+            with patch.object(cli.config, "CONFIG_PATH", config_path), contextlib.redirect_stdout(stdout):
                 cli.cmd_config_show(argparse.Namespace(format="json"))
 
         data = json.loads(stdout.getvalue())
@@ -35,7 +35,7 @@ class PublicReleaseUsabilityTests(unittest.TestCase):
                 limit=0,
             )
             stdout = io.StringIO()
-            with patch.object(cli, "CONFIG_PATH", config_path), contextlib.redirect_stdout(stdout):
+            with patch.object(cli.config, "CONFIG_PATH", config_path), contextlib.redirect_stdout(stdout):
                 cli.cmd_scan(args)
 
         data = json.loads(stdout.getvalue())
@@ -63,16 +63,16 @@ class PublicReleaseUsabilityTests(unittest.TestCase):
                 yes=True,
                 message="Sync",
             )
-            with patch.object(cli, "CONFIG_PATH", config_path), patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "CONFIG_PATH", config_path), patch.object(cli.config, "load_config", return_value=cfg):
                 with self.assertRaises(SystemExit) as cm:
                     cli.cmd_push(args)
             self.assertIn("No config file found", str(cm.exception))
 
             args.dry_run = True
             stdout = io.StringIO()
-            with patch.object(cli, "CONFIG_PATH", config_path), \
-                 patch.object(cli, "load_config", return_value=cfg), \
-                 patch.object(cli, "repo_dirty", return_value=False), \
+            with patch.object(cli.config, "CONFIG_PATH", config_path), \
+                 patch.object(cli.config, "load_config", return_value=cfg), \
+                 patch.object(cli.gitutil, "repo_dirty", return_value=False), \
                  contextlib.redirect_stdout(stdout):
                 cli.cmd_push(args)
             self.assertIn("using implicit defaults", stdout.getvalue())

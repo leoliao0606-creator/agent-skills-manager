@@ -45,7 +45,7 @@ class StatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_status(status_args())
 
@@ -66,7 +66,7 @@ class StatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_status(status_args(no_scan=True))
 
@@ -85,7 +85,7 @@ class StatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_status(status_args(no_git=True))
 
@@ -106,7 +106,7 @@ class StatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_status(status_args(format="json"))
 

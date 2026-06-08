@@ -46,7 +46,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args())
 
@@ -73,7 +73,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(all=True))
 
@@ -96,7 +96,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(all=True))
 
@@ -119,7 +119,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(only="missing"))
 
@@ -138,7 +138,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(format="names"))
 
@@ -155,7 +155,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(format="json"))
 
@@ -180,7 +180,7 @@ class ScanStatusTests(unittest.TestCase):
             limited = io.StringIO()
             no_examples = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(limited):
                     cli.cmd_scan(scan_args(limit=1))
                 with contextlib.redirect_stdout(no_examples):
@@ -201,7 +201,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(color="always"))
 
@@ -222,7 +222,7 @@ class ScanStatusTests(unittest.TestCase):
             )
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 with contextlib.redirect_stdout(stdout):
                     cli.cmd_scan(scan_args(ascii_art=False))
 

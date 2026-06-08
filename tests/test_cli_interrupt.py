@@ -28,8 +28,8 @@ class CtrlCHandlingTests(unittest.TestCase):
 
     def test_setup_explains_local_repo_checkout_path_before_prompting(self):
         stdout = io.StringIO()
-        with patch.object(cli, "git_available", return_value=True):
-            with patch.object(cli, "load_config", return_value=cli.Config("~/agent-skills-library")):
+        with patch.object(cli.gitutil, "git_available", return_value=True):
+            with patch.object(cli.config, "load_config", return_value=cli.Config("~/agent-skills-library")):
                 def interrupt_after_prompt(prompt):
                     print(prompt, end="")
                     raise KeyboardInterrupt
@@ -70,10 +70,10 @@ class CtrlCHandlingTests(unittest.TestCase):
             saved.append(config)
             raise KeyboardInterrupt
 
-        with patch.object(cli, "git_available", return_value=True):
-            with patch.object(cli, "load_config", return_value=cfg):
-                with patch.object(cli, "candidate_targets", return_value=[]):
-                    with patch.object(cli, "save_config", side_effect=save_and_stop):
+        with patch.object(cli.gitutil, "git_available", return_value=True):
+            with patch.object(cli.config, "load_config", return_value=cfg):
+                with patch.object(cli.config, "candidate_targets", return_value=[]):
+                    with patch.object(cli.config, "save_config", side_effect=save_and_stop):
                         with patch("builtins.input", side_effect=answer):
                             with contextlib.redirect_stdout(stdout):
                                 with self.assertRaises(KeyboardInterrupt):
@@ -112,10 +112,10 @@ class CtrlCHandlingTests(unittest.TestCase):
             saved.append(config)
             raise KeyboardInterrupt
 
-        with patch.object(cli, "git_available", return_value=True):
-            with patch.object(cli, "load_config", return_value=cfg):
-                with patch.object(cli, "candidate_targets", return_value=[]):
-                    with patch.object(cli, "save_config", side_effect=save_and_stop):
+        with patch.object(cli.gitutil, "git_available", return_value=True):
+            with patch.object(cli.config, "load_config", return_value=cfg):
+                with patch.object(cli.config, "candidate_targets", return_value=[]):
+                    with patch.object(cli.config, "save_config", side_effect=save_and_stop):
                         with patch("builtins.input", side_effect=answer):
                             with contextlib.redirect_stdout(stdout):
                                 with self.assertRaises(KeyboardInterrupt):

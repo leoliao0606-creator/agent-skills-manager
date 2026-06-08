@@ -48,8 +48,8 @@ class ManagementFeatureTests(unittest.TestCase):
             cfg = cli.Config(repo_dir=str(repo), targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)])
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg), \
-                 patch.object(cli, "repo_dirty", return_value=True), \
+            with patch.object(cli.config, "load_config", return_value=cfg), \
+                 patch.object(cli.gitutil, "repo_dirty", return_value=True), \
                  contextlib.redirect_stdout(stdout):
                 cli.cmd_push(ns(dry_run=True, message="Sync"))
 
@@ -66,21 +66,21 @@ class ManagementFeatureTests(unittest.TestCase):
             cfg = cli.Config(repo_dir=str(repo), targets=[cli.SkillTarget("claude", str(missing), "claude-skills", True)])
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg), \
-                 patch.object(cli, "repo_dirty", return_value=False), \
+            with patch.object(cli.config, "load_config", return_value=cfg), \
+                 patch.object(cli.gitutil, "repo_dirty", return_value=False), \
                  contextlib.redirect_stdout(stdout):
                 cli.cmd_push(ns(message="Sync", dry_run=True))
 
             self.assertIn("Skipping missing source for claude", stdout.getvalue())
-            with patch.object(cli, "load_config", return_value=cfg), \
-                 patch.object(cli, "repo_dirty", return_value=False):
+            with patch.object(cli.config, "load_config", return_value=cfg), \
+                 patch.object(cli.gitutil, "repo_dirty", return_value=False):
                 with self.assertRaises(SystemExit):
                     cli.cmd_push(ns(message="Sync", strict=True, dry_run=True))
 
     def test_doctor_reports_dangerous_repo_path_as_error(self):
         cfg = cli.Config(repo_dir=str(Path.home()), targets=[])
         stdout = io.StringIO()
-        with patch.object(cli, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
+        with patch.object(cli.config, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as cm:
                 cli.cmd_doctor(ns(format="text"))
         self.assertEqual(cm.exception.code, 1)
@@ -89,7 +89,7 @@ class ManagementFeatureTests(unittest.TestCase):
     def test_config_and_target_commands_are_scriptable(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "config.json"
-            with patch.object(cli, "CONFIG_PATH", config_path):
+            with patch.object(cli.config, "CONFIG_PATH", config_path):
                 cli.cmd_config_set(argparse.Namespace(key="repo_dir", value="~/skills"))
                 cli.cmd_target_add(argparse.Namespace(name="custom", local="~/.custom/skills", repo="custom-skills", disabled=False))
                 cli.cmd_target_disable(argparse.Namespace(name="custom"))
@@ -113,7 +113,7 @@ class ManagementFeatureTests(unittest.TestCase):
             cfg = cli.Config(repo_dir=str(repo), targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)])
             stdout = io.StringIO()
 
-            with patch.object(cli, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
+            with patch.object(cli.config, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
                 cli.cmd_diff(ns(direction="push", mirror=True, format="json"))
 
         data = json.loads(stdout.getvalue())
@@ -132,7 +132,7 @@ class ManagementFeatureTests(unittest.TestCase):
             (skill / "SKILL.md").write_text("# Bad\n", encoding="utf-8")
             cfg = cli.Config(repo_dir=str(root / "repo"), targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)])
             stdout = io.StringIO()
-            with patch.object(cli, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
+            with patch.object(cli.config, "load_config", return_value=cfg), contextlib.redirect_stdout(stdout):
                 with self.assertRaises(SystemExit):
                     cli.cmd_validate(ns(location="local", target=None, format="text"))
         self.assertIn("missing frontmatter", stdout.getvalue())
@@ -143,7 +143,7 @@ class ManagementFeatureTests(unittest.TestCase):
             local = root / "local"
             repo = root / "repo"
             cfg = cli.Config(repo_dir=str(repo), targets=[cli.SkillTarget("claude", str(local), "claude-skills", True)])
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 cli.cmd_new(argparse.Namespace(name="Demo Skill", target="claude", repo=False, force=False))
                 self.assertTrue((local / "demo-skill" / "SKILL.md").exists())
 
@@ -168,7 +168,7 @@ class ManagementFeatureTests(unittest.TestCase):
 
                 imported = root / "imported"
                 import_cfg = cli.Config(repo_dir=str(repo), targets=[cli.SkillTarget("claude", str(imported), "claude-skills", True)])
-                with patch.object(cli, "load_config", return_value=import_cfg):
+                with patch.object(cli.config, "load_config", return_value=import_cfg):
                     cli.cmd_import(argparse.Namespace(path=str(archive), target="claude", repo=False, dry_run=False, mirror=False, force=False, strict=False, yes=True))
                 self.assertTrue((imported / "demo-skill" / "SKILL.md").exists())
 
@@ -182,7 +182,7 @@ class ManagementFeatureTests(unittest.TestCase):
             backup_path = cli.create_backup(cfg, cfg.targets[0], local)
             (local / "demo.txt").write_text("after\n", encoding="utf-8")
 
-            with patch.object(cli, "load_config", return_value=cfg):
+            with patch.object(cli.config, "load_config", return_value=cfg):
                 cli.cmd_restore_backup(argparse.Namespace(path=str(backup_path), target="claude", dry_run=False, mirror=True, yes=True))
 
             self.assertEqual((local / "demo.txt").read_text(encoding="utf-8"), "before\n")
