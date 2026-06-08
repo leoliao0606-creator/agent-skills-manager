@@ -12,6 +12,15 @@ license = {text = "MIT"}
 authors = [{name = "Leo"}]
 dependencies = []
 
+[project.optional-dependencies]
+# Contributor tooling only; the runtime stays standard-library-only.
+# Install with: python3 -m pip install -e ".[dev]"
+dev = [
+    "pytest>=7",
+    "ruff>=0.4",
+    "build>=1.0",
+]
+
 [project.scripts]
 agent-skills = "agent_skills_manager.cli:main"
 askills = "agent_skills_manager.cli:main"
@@ -23,3 +32,13 @@ Issues = "https://github.com/leoliao0606-creator/agent-skills-manager/issues"
 
 [tool.setuptools]
 packages = ["agent_skills_manager"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+# Long descriptive lines (help text, plan dicts) are intentional in this CLI.
+ignore = ["E501"]
