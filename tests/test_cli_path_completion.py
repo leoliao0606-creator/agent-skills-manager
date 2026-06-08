@@ -29,7 +29,7 @@ class PathCompletionTests(unittest.TestCase):
             self.assertTrue(callable(fake_readline.completer))
             return "~/Projects/skills"
 
-        with patch.object(cli, "readline", fake_readline):
+        with patch.object(cli.tui, "readline", fake_readline):
             with patch("builtins.input", side_effect=answer):
                 result = cli.read_path_answer("Local repo checkout path", "~/agent-skills-library")
 
@@ -39,7 +39,7 @@ class PathCompletionTests(unittest.TestCase):
         self.assertEqual(fake_readline.completer, "original")
 
     def test_read_path_answer_falls_back_to_plain_input_without_readline(self):
-        with patch.object(cli, "readline", None):
+        with patch.object(cli.tui, "readline", None):
             with patch("builtins.input", return_value=""):
                 result = cli.read_path_answer("Local repo checkout path", "~/agent-skills-library")
 
