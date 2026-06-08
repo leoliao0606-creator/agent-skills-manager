@@ -63,16 +63,19 @@ def cmd_validate(args: argparse.Namespace) -> None:
     cfg = config.load_config()
     errors: List[str] = []
     warnings: List[str] = []
-    seen_names: Dict[str, Path] = {}
     for target, root in validation_roots(cfg, args.location, args.target):
         if not root.exists():
             errors.append(f"[{target.name}] missing root: {root}")
             continue
+        # Duplicate names are only a problem within a single target: two targets
+        # (e.g. claude and codex) legitimately hold their own copy of a skill, so
+        # cross-target name collisions are neither errors nor warnings.
+        seen_names: Dict[str, Path] = {}
         for skill_dir in fsutil.iter_skill_dirs(root):
             meta = parse_frontmatter((skill_dir / "SKILL.md").read_text(encoding="utf-8", errors="ignore")) if (skill_dir / "SKILL.md").exists() else {}
             name = meta.get("name") or skill_dir.name
             if name in seen_names:
-                errors.append(f"duplicate skill name '{name}': {seen_names[name]} and {skill_dir}")
+                errors.append(f"duplicate skill name '{name}' in target '{target.name}': {seen_names[name]} and {skill_dir}")
             else:
                 seen_names[name] = skill_dir
             skill_errors, skill_warnings = validate_skill_dir(skill_dir)
