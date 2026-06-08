@@ -1,7 +1,7 @@
 """A small coloured pill label used for green/amber/red status."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QLabel
+from PySide6.QtWidgets import QLabel, QSizePolicy
 
 
 class StatusBadge(QLabel):
@@ -10,6 +10,9 @@ class StatusBadge(QLabel):
     def __init__(self, text: str = "", level: str = "muted") -> None:
         super().__init__(text)
         self.setProperty("badge", True)
+        # Hug the text so the pill stays compact instead of stretching to fill
+        # whatever layout cell it lands in.
+        self.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.set_status(level, text)
 
     def set_status(self, level: str, text: str | None = None) -> None:
