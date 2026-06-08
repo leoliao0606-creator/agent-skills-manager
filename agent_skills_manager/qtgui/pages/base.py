@@ -3,9 +3,25 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ..widgets import StatusBadge
+
+
+def add_card_shadow(widget: QWidget) -> None:
+    """Give a card a soft, diffuse drop shadow so it floats like a macOS panel."""
+    shadow = QGraphicsDropShadowEffect(widget)
+    shadow.setBlurRadius(24)
+    shadow.setColor(QColor(0, 0, 0, 38))
+    shadow.setOffset(0, 2)
+    widget.setGraphicsEffect(shadow)
 
 
 class Page(QWidget):
@@ -38,8 +54,9 @@ class Card(QFrame):
     def __init__(self, title: str) -> None:
         super().__init__()
         self.setProperty("card", True)
+        add_card_shadow(self)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(6)
 
         title_label = QLabel(title.upper())

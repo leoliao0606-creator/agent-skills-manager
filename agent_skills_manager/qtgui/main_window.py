@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
 
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
-        self.nav.setFixedWidth(180)
+        self.nav.setFixedWidth(200)
         self.stack = QStackedWidget()
 
         self._pages: List[Tuple[str, QWidget]] = [
@@ -86,11 +86,12 @@ class MainWindow(QMainWindow):
 
     def _build_header(self) -> QFrame:
         header = QFrame()
-        header.setProperty("card", False)
+        header.setObjectName("titleBar")
+        header.setFixedHeight(48)
         layout = QHBoxLayout(header)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(18, 0, 18, 0)
         title = QLabel("Agent Skills Manager")
-        title.setObjectName("cardValue")
+        title.setObjectName("appTitle")
         self.busy_label = QLabel("")
         self.busy_label.setProperty("muted", True)
         layout.addWidget(title)

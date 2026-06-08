@@ -45,7 +45,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"agent_skills_manager.qtgui" = ["resources/*.qss"]
+"agent_skills_manager.qtgui" = ["resources/*.qss", "resources/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
