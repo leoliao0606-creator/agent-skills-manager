@@ -149,7 +149,7 @@ from .commands import (  # noqa: F401
     cmd_profile_use,
     cmd_install_shell,
 )
-from .gui import cmd_gui  # noqa: F401
+from .gui import cmd_gui, gui_action_command  # noqa: F401
 
 
 # ----- Parser -----

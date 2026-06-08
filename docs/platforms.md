@@ -9,7 +9,7 @@ skills repository. For installation, see the [README](../README.md).
 agent-skills gui
 ```
 
-The GUI is experimental and intentionally secondary to the CLI. It can configure common settings and run basic scan/pull/push actions, but the CLI has the full feature set.
+The GUI is experimental and intentionally secondary to the CLI. It edits the same config (including adding and removing targets) and runs `scan`, `status`, `diff`, `validate`, `pull`, and `push` as background actions, streaming their output into a log pane so the window stays responsive. A dry-run toggle previews `push`/`pull`, and a mirror toggle (with a delete confirmation) enables mirror sync. The CLI still has the full feature set.
 
 Tkinter is included with many Python installers, but not all minimal Linux distributions include it by default. If the GUI is unavailable, use the CLI commands instead.
 
