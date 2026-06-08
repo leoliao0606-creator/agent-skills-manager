@@ -16,12 +16,13 @@ agent-skills gui
 
 The CLI remains the primary, dependency-free interface. The GUI is optional and uses the same configuration and sync logic as the CLI — it never reimplements business rules.
 
-The window has eight pages in a left-hand nav:
+The window has nine pages in a left-hand nav:
 
 - **Overview** — a dashboard of config, repository, and target status.
 - **Targets** — edit the mapping of local skill directories to repo subdirectories. Removing a target only changes config; it never deletes files.
 - **Sync** — preview push/pull safely (read-only), then apply. Dry-run is on by default; mirror and force require confirmation, and Apply stays disabled while conflicts exist.
 - **Diff** — per-target, file-level view of what differs between local and repo.
+- **Compare** — preview and compare any two targets' skills (each side switchable between local and repo). Rows are colour-coded by status (only A / only B / identical / differing), a SKILL.md diff is shown for shared skills, and "Copy A → B" / "Copy B → A" apply a single skill across agents through the same `copy-skill` command with confirmation and a backup.
 - **Validate** — structure, metadata, duplicate-name, and possible-secret findings.
 - **Backups** — list backups and restore them (a dry-run is required before a real restore).
 - **Settings** — repository, remote, branch, backups directory, excludes, and profile.

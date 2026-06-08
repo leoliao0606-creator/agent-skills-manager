@@ -9,6 +9,30 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 
+from agent_skills_manager.gui import gui_copy_skill_command
+
+
+def test_gui_copy_skill_command_builds_argv():
+    # Pure argv builder — runs without PySide6 installed.
+    argv = gui_copy_skill_command(
+        "claude:demo", "hermes", from_location="local", to_location="repo",
+        dry_run=True, mirror=True, force=True, python="py",
+    )
+    assert argv[:5] == ["py", "-m", "agent_skills_manager.cli", "copy-skill", "claude:demo"]
+    assert argv[5:9] == ["--to-target", "hermes", "--from-location", "local"]
+    assert "--to-location" in argv and argv[argv.index("--to-location") + 1] == "repo"
+    assert "--yes" in argv
+    for flag in ("--dry-run", "--mirror", "--force"):
+        assert flag in argv
+
+
+def test_gui_copy_skill_command_omits_optional_flags():
+    argv = gui_copy_skill_command("claude:demo", "hermes", python="py")
+    for flag in ("--dry-run", "--mirror", "--force"):
+        assert flag not in argv
+    assert "--yes" in argv
+
+
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import QElapsedTimer  # noqa: E402
@@ -16,7 +40,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from agent_skills_manager.qtgui.main_window import MainWindow  # noqa: E402
 
-EXPECTED_PAGES = ["Overview", "Targets", "Sync", "Diff", "Validate", "Backups", "Settings", "Logs"]
+EXPECTED_PAGES = ["Overview", "Targets", "Sync", "Diff", "Compare", "Validate", "Backups", "Settings", "Logs"]
 
 
 @pytest.fixture(scope="module")
@@ -51,6 +75,7 @@ def test_pages_construct_individually(app):
     # Each page is constructed inside MainWindow; verify the concrete types so a
     # broken page import/layout fails here rather than only at runtime.
     from agent_skills_manager.qtgui.pages.backups import BackupsPage
+    from agent_skills_manager.qtgui.pages.compare import ComparePage
     from agent_skills_manager.qtgui.pages.diff import DiffPage
     from agent_skills_manager.qtgui.pages.logs import LogsPage
     from agent_skills_manager.qtgui.pages.overview import OverviewPage
@@ -63,7 +88,7 @@ def test_pages_construct_individually(app):
     try:
         types = {type(page) for _label, page in window._pages}
         assert types == {
-            OverviewPage, TargetsPage, SyncPage, DiffPage,
+            OverviewPage, TargetsPage, SyncPage, DiffPage, ComparePage,
             ValidatePage, BackupsPage, SettingsPage, LogsPage,
         }
         _drain(app, window)

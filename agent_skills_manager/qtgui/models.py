@@ -5,13 +5,34 @@ from typing import List, Optional, Tuple
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QApplication
 
 from ..config import SkillTarget
-from .services import FileChange, TargetStatus, ValidationFinding
+from . import theme
+from .services import FileChange, SkillComparisonRow, TargetStatus, ValidationFinding
 
 _RED = QColor("#ef4444")
 _AMBER = QColor("#9a6700")
 _MUTED = QColor("#6e7781")
+
+# Comparison statuses map to distinct semantic colours from the active palette so
+# they track the OS light/dark switch the same way the rest of the GUI does.
+_COMPARE_TOKENS = {
+    "only_a": "ACCENT",     # only in A   -> blue
+    "only_b": "WARN_FG",    # only in B   -> amber
+    "same": "OK_FG",        # identical   -> green
+    "different": "ERROR_FG",  # differs   -> red
+}
+
+
+def status_color(status: str) -> Optional[QColor]:
+    """Return the palette colour for a comparison status (live light/dark aware)."""
+    token = _COMPARE_TOKENS.get(status)
+    if not token:
+        return None
+    app = QApplication.instance()
+    palette = theme.DARK if (app is not None and theme.is_dark(app)) else theme.LIGHT
+    return QColor(palette[token])
 
 
 class TargetTableModel(QAbstractTableModel):
@@ -228,6 +249,51 @@ class FileChangeTableModel(QAbstractTableModel):
         self.endResetModel()
 
     def change_at(self, position: int) -> Optional[Tuple[str, FileChange]]:
+        if 0 <= position < len(self._rows):
+            return self._rows[position]
+        return None
+
+
+class SkillComparisonTableModel(QAbstractTableModel):
+    """Read-only, colour-coded table comparing two targets' skills (Compare page)."""
+
+    HEADERS = ["Status", "Skill", "A version", "B version"]
+    _LABELS = {"only_a": "only A", "only_b": "only B", "same": "same", "different": "differs"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._rows: List[SkillComparisonRow] = []
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self._rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self.HEADERS)
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.HEADERS[section]
+        return None
+
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+        if not index.isValid():
+            return None
+        row = self._rows[index.row()]
+        col = index.column()
+        if role in (Qt.DisplayRole, Qt.EditRole):
+            a_version = row.a.version if row.a else ""
+            b_version = row.b.version if row.b else ""
+            return [self._LABELS.get(row.status, row.status), row.name, a_version, b_version][col]
+        if role == Qt.ForegroundRole and col == 0:
+            return status_color(row.status)
+        return None
+
+    def set_rows(self, rows: List[SkillComparisonRow]) -> None:
+        self.beginResetModel()
+        self._rows = list(rows)
+        self.endResetModel()
+
+    def row_at(self, position: int) -> Optional[SkillComparisonRow]:
         if 0 <= position < len(self._rows):
             return self._rows[position]
         return None

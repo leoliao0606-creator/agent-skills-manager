@@ -234,7 +234,33 @@ agent-skills push --dry-run
 | Restore repository skills to this machine | `agent-skills pull --dry-run`, then `agent-skills pull` |
 | Keep both sides updated | `agent-skills sync --dry-run`, then `agent-skills sync` |
 | Create a new skill skeleton | `agent-skills new "Name" --target claude` |
+| Preview one agent's skills with metadata | `agent-skills preview claude` |
+| Compare two agents' skills | `agent-skills compare claude hermes` |
+| Apply a skill from one agent to another | `agent-skills copy-skill claude:demo --to-target hermes` |
 | Validate skill files | `agent-skills validate` |
+
+### Preview and compare skills across agents
+
+Sometimes a skill that lives on one agent is worth applying to another. Three
+commands make this easy and work on either the `local` install or the `repo`
+copy of each target (`--location` / `--a-location` / `--b-location`):
+
+```bash
+# List one target's skills with their name/version/description
+agent-skills preview claude
+agent-skills preview claude --format json
+
+# Compare two targets: shows only-A / only-B / same / differing skills
+agent-skills compare claude hermes
+agent-skills compare claude claude --a-location local --b-location repo
+
+# Copy/apply a single skill from one target to another (dry-run by adding --dry-run)
+agent-skills copy-skill claude:demo --to-target hermes
+```
+
+`copy-skill` reuses the same safe copy engine as `push`/`pull`: it backs up the
+destination target before overwriting an existing skill, refuses conflicting
+overwrites without `--force`, and supports `--dry-run` and `--mirror`.
 
 The setup wizard asks for the local checkout path (default `~/agent-skills-library`), a Git remote URL (optional; empty for local-only use), the default branch, which agents to sync, and the local/repository directories for each target. Path prompts support Tab completion where Python `readline` is available.
 
@@ -267,7 +293,7 @@ python3 -m pip install "agent-skills-manager[qt]"   # or, from a clone: pip inst
 agent-skills gui
 ```
 
-The window has eight pages in a left-hand nav — Overview, Targets, Sync, Diff, Validate, Backups, Settings, and Logs. It keeps the CLI's safety model: previews are read-only, dry-run is on by default, deleting a target never deletes files, and mirror/force/restore require confirmation. If PySide6 is not installed, `agent-skills gui` prints an install hint and points you back to the CLI commands instead.
+The window has nine pages in a left-hand nav — Overview, Targets, Sync, Diff, Compare, Validate, Backups, Settings, and Logs. The Compare page previews and compares any two targets' skills (each side switchable between local and repo), colour-codes which skills are only on one side / identical / differing, shows a SKILL.md diff, and offers "Copy A → B" / "Copy B → A" buttons that run the same `copy-skill` command with confirmation. It keeps the CLI's safety model: previews are read-only, dry-run is on by default, deleting a target never deletes files, and mirror/force/restore require confirmation. If PySide6 is not installed, `agent-skills gui` prints an install hint and points you back to the CLI commands instead.
 
 See [docs/platforms.md](docs/platforms.md#optional-qt-gui) for a per-page tour.
 

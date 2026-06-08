@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from .pages.backups import BackupsPage
+from .pages.compare import ComparePage
 from .pages.diff import DiffPage
 from .pages.logs import LogsPage
 from .pages.overview import OverviewPage
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow):
             ("Targets", TargetsPage(self)),
             ("Sync", SyncPage(self)),
             ("Diff", DiffPage(self)),
+            ("Compare", ComparePage(self)),
             ("Validate", ValidatePage(self)),
             ("Backups", BackupsPage(self)),
             ("Settings", SettingsPage(self)),

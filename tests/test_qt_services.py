@@ -185,6 +185,58 @@ class QtServiceTests(unittest.TestCase):
         config.save_config(config.Config(repo_dir=str(self.root / "repo")), profile="work")
         self.assertIn("work", services.list_profiles())
 
+    # --- preview + comparison ---
+    def test_preview_target_returns_summaries(self):
+        local = self.root / "claude-local"
+        make_skill(local, "alpha", frontmatter_name="alpha", description="first")
+        self.write_config([SkillTarget("claude", str(local), "claude-skills", True)])
+        summaries = services.preview_target("claude", "local")
+        self.assertEqual([s.name for s in summaries], ["alpha"])
+        self.assertEqual(summaries[0].meta_name, "alpha")
+        self.assertEqual(summaries[0].description, "first")
+        self.assertEqual(summaries[0].location, "local")
+
+    def test_compare_targets_statuses(self):
+        a_local = self.root / "a-local"
+        b_local = self.root / "b-local"
+        make_skill(a_local, "shared-same", frontmatter_name="shared-same")
+        make_skill(b_local, "shared-same", frontmatter_name="shared-same")
+        make_skill(a_local, "shared-diff", frontmatter_name="shared-diff", description="a")
+        make_skill(b_local, "shared-diff", frontmatter_name="shared-diff", description="b")
+        make_skill(a_local, "only-a", frontmatter_name="only-a")
+        make_skill(b_local, "only-b", frontmatter_name="only-b")
+        self.write_config([
+            SkillTarget("agentA", str(a_local), "a-skills", True),
+            SkillTarget("agentB", str(b_local), "b-skills", True),
+        ])
+        comparison = services.compare_targets("agentA", "local", "agentB", "local")
+        statuses = {r.name: r.status for r in comparison.rows}
+        self.assertEqual(statuses["shared-same"], "same")
+        self.assertEqual(statuses["shared-diff"], "different")
+        self.assertEqual(statuses["only-a"], "only_a")
+        self.assertEqual(statuses["only-b"], "only_b")
+
+    def test_compare_same_target_local_vs_repo(self):
+        local = self.root / "claude-local"
+        repo_sub = self.root / "repo" / "claude-skills"
+        make_skill(local, "alpha", frontmatter_name="alpha", description="local")
+        make_skill(repo_sub, "alpha", frontmatter_name="alpha", description="repo")
+        self.write_config([SkillTarget("claude", str(local), "claude-skills", True)])
+        comparison = services.compare_targets("claude", "local", "claude", "repo")
+        statuses = {r.name: r.status for r in comparison.rows}
+        self.assertEqual(statuses["alpha"], "different")
+
+    def test_skill_unified_diff_nonempty_when_different(self):
+        a_local = self.root / "a-local"
+        b_local = self.root / "b-local"
+        a = make_skill(a_local, "alpha", frontmatter_name="alpha", description="a")
+        b = make_skill(b_local, "alpha", frontmatter_name="alpha", description="b")
+        diff = services.skill_unified_diff(str(a / "SKILL.md"), str(b / "SKILL.md"), "A", "B")
+        self.assertIn("description: a", diff)
+        self.assertIn("description: b", diff)
+        same = services.skill_unified_diff(str(a / "SKILL.md"), str(a / "SKILL.md"), "A", "B")
+        self.assertEqual(same, "")
+
 
 if __name__ == "__main__":
     unittest.main()

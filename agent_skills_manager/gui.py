@@ -47,6 +47,41 @@ def gui_action_command(
     return cmd
 
 
+def gui_copy_skill_command(
+    spec: str,
+    to_target: str,
+    *,
+    from_location: str = "local",
+    to_location: str = "local",
+    dry_run: bool = False,
+    mirror: bool = False,
+    force: bool = False,
+    python: Optional[str] = None,
+) -> List[str]:
+    """Build the ``copy-skill`` argv for the GUI's "Copy →" action.
+
+    Kept as a pure function (alongside :func:`gui_action_command`) so the GUI
+    write path goes through the exact CLI verb and its confirmation/backup, and
+    so the flag assembly stays unit-testable without a display. ``--yes`` is set
+    because the GUI gathers its own confirmation before invoking the command.
+    """
+    python = python or sys.executable
+    cmd = [
+        python, "-m", "agent_skills_manager.cli", "copy-skill", spec,
+        "--to-target", to_target,
+        "--from-location", from_location,
+        "--to-location", to_location,
+        "--yes",
+    ]
+    if dry_run:
+        cmd.append("--dry-run")
+    if mirror:
+        cmd.append("--mirror")
+    if force:
+        cmd.append("--force")
+    return cmd
+
+
 def cmd_gui(args: argparse.Namespace) -> None:
     try:
         from .qtgui.app import run
